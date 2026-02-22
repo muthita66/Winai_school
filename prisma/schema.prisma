@@ -1,0 +1,432 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model advisor_evaluation_results {
+  id         Int       @id @default(autoincrement())
+  student_id Int
+  teacher_id Int
+  topic      String    @db.VarChar(255)
+  score      Int?
+  year       Int
+  semester   Int
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  students   students  @relation(fields: [student_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  teachers   teachers  @relation(fields: [teacher_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model attendance {
+  id               Int               @id @default(autoincrement())
+  student_id       Int?
+  section_id       Int?
+  date             DateTime?         @db.Date
+  status           String?           @db.VarChar(10)
+  subject_sections subject_sections? @relation(fields: [section_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  students         students?         @relation(fields: [student_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model classroom_master {
+  id          Int       @id @default(autoincrement())
+  class_level String    @db.VarChar(20)
+  room        String    @db.VarChar(10)
+  created_at  DateTime? @default(now()) @db.Timestamp(6)
+
+  @@unique([class_level, room])
+}
+
+model competency_feedback {
+  id         Int       @id @default(autoincrement())
+  student_id Int
+  section_id Int?
+  year       Int
+  semester   Int
+  feedback   String?
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model competency_results {
+  id         Int    @id @default(autoincrement())
+  student_id Int?
+  name       String
+  score      Int?
+  year       Int?
+  semester   Int?
+  section_id Int?
+}
+
+model competency_topics {
+  id          Int       @id @default(autoincrement())
+  name        String
+  year        Int
+  semester    Int
+  order_index Int?      @default(0)
+  avg_score   Decimal?  @db.Decimal(5, 2)
+  created_at  DateTime? @default(now()) @db.Timestamp(6)
+
+  @@unique([name, year, semester])
+}
+
+model conduct_logs {
+  id         Int      @id @default(autoincrement())
+  student_id Int?
+  log_date   DateTime @db.Date
+  event      String
+  point      Int
+}
+
+model directors {
+  id            Int       @id @default(autoincrement())
+  director_code String    @unique @db.VarChar(20)
+  first_name    String?   @db.VarChar(100)
+  last_name     String?   @db.VarChar(100)
+  password_hash String
+  photo_url     String?
+  created_at    DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model duty_teachers {
+  id         Int       @id @default(autoincrement())
+  week_start DateTime  @db.Date
+  teacher_id Int
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  teachers   teachers  @relation(fields: [teacher_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([week_start, teacher_id])
+}
+
+model exam_schedule {
+  id         Int       @id @default(autoincrement())
+  section_id Int?
+  exam_type  String?   @db.VarChar(20)
+  exam_date  DateTime? @db.Date
+  time_range String?   @db.VarChar(50)
+  room       String?   @db.VarChar(50)
+}
+
+model finance_records {
+  id          Int       @id @default(autoincrement())
+  title       String    @db.VarChar(200)
+  category    String?   @db.VarChar(100)
+  amount      Decimal   @db.Decimal(12, 2)
+  type        String    @db.VarChar(10)
+  record_date DateTime  @db.Date
+  note        String?
+  created_at  DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model grade_thresholds {
+  id               Int               @id @default(autoincrement())
+  section_id       Int?              @unique
+  a                Int               @default(80)
+  b_plus           Int               @default(75)
+  b                Int               @default(70)
+  c_plus           Int               @default(65)
+  c                Int               @default(60)
+  d_plus           Int               @default(55)
+  d                Int               @default(50)
+  f                Int               @default(30)
+  subject_sections subject_sections? @relation(fields: [section_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model grades {
+  id               Int               @id @default(autoincrement())
+  student_id       Int?
+  section_id       Int?
+  total_score      Decimal?          @db.Decimal
+  grade            String?           @db.VarChar(2)
+  subject_sections subject_sections? @relation(fields: [section_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  students         students?         @relation(fields: [student_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model health_records {
+  id              Int       @id @default(autoincrement())
+  student_id      Int?
+  weight          Decimal?  @db.Decimal
+  height          Decimal?  @db.Decimal
+  blood_pressure  String?   @db.VarChar(20)
+  blood_type      String?   @db.VarChar(10)
+  allergies       String?
+  chronic_illness String?
+  updated_at      DateTime? @default(now()) @db.Timestamp(6)
+  vaccinations    Json?     @default("[]")
+  vision_left     String?
+  vision_right    String?
+}
+
+model projects {
+  id              Int       @id @default(autoincrement())
+  name            String    @db.VarChar(255)
+  year            Int?
+  semester        Int?
+  objective       String?
+  department      String?   @db.VarChar(150)
+  budget_total    Decimal?  @default(0) @db.Decimal(12, 2)
+  budget_used     Decimal?  @default(0) @db.Decimal(12, 2)
+  quantity_target Int?      @default(0)
+  quantity_actual Int?      @default(0)
+  quality_score   Int?      @default(0)
+  kpi_score       Int?      @default(0)
+  created_at      DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model registrations {
+  id               Int               @id @default(autoincrement())
+  student_id       Int?
+  section_id       Int?
+  year             Int?
+  semester         Int?
+  created_at       DateTime?         @default(now()) @db.Timestamp(6)
+  status           String?           @default("cart") @db.VarChar(20)
+  subject_sections subject_sections? @relation(fields: [section_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  students         students?         @relation(fields: [student_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model school_activities {
+  id       Int     @id @default(autoincrement())
+  name     String
+  date     String? @db.VarChar(50)
+  location String?
+  note     String?
+  category String? @db.VarChar(50)
+}
+
+model score_headers {
+  id          Int       @id @default(autoincrement())
+  teacher_id  Int
+  subject_id  Int
+  class_level String?   @db.VarChar(20)
+  room        String?   @db.VarChar(10)
+  header_name String?   @db.VarChar(255)
+  max_score   Int
+  year        Int
+  semester    Int
+  created_at  DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model score_items {
+  id               Int               @id @default(autoincrement())
+  section_id       Int?
+  title            String?           @db.VarChar(255)
+  max_score        Decimal?          @db.Decimal
+  created_at       DateTime?         @default(now()) @db.Timestamp(6)
+  subject_sections subject_sections? @relation(fields: [section_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  scores           scores[]
+}
+
+model scores {
+  id          Int          @id @default(autoincrement())
+  student_id  Int?
+  item_id     Int?
+  score       Decimal?     @db.Decimal
+  score_items score_items? @relation(fields: [item_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  students    students?    @relation(fields: [student_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model student_conduct {
+  id         Int       @id @default(autoincrement())
+  student_id Int?
+  log_date   DateTime? @db.Date
+  event      String?
+  point      Int?
+  students   students? @relation(fields: [student_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model student_fitness_tests {
+  id             Int       @id @default(autoincrement())
+  student_id     Int
+  teacher_id     Int
+  test_name      String    @db.VarChar(255)
+  result_value   String?   @db.VarChar(255)
+  standard_value String?   @db.VarChar(255)
+  status         String?   @db.VarChar(100)
+  year           Int
+  semester       Int
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  students       students  @relation(fields: [student_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  teachers       teachers  @relation(fields: [teacher_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model student_health {
+  id              Int       @id @default(autoincrement())
+  student_id      Int?
+  weight          Decimal?  @db.Decimal
+  height          Decimal?  @db.Decimal
+  blood_pressure  String?   @db.VarChar(20)
+  blood_type      String?   @db.VarChar(10)
+  allergies       String?
+  chronic_illness String?
+  updated_at      DateTime? @default(now()) @db.Timestamp(6)
+  students        students? @relation(fields: [student_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model student_vaccinations {
+  id           Int       @id @default(autoincrement())
+  student_id   Int
+  vaccine_name String
+  vaccine_date DateTime? @db.Date
+  status       String?
+  created_at   DateTime? @default(now()) @db.Timestamp(6)
+  students     students  @relation(fields: [student_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model students {
+  id                         Int                          @id @default(autoincrement())
+  student_code               String                       @unique @db.VarChar(20)
+  first_name                 String?                      @db.VarChar(100)
+  last_name                  String?                      @db.VarChar(100)
+  password_hash              String
+  class_level                String?                      @db.VarChar(10)
+  classroom                  String?                      @db.VarChar(10)
+  created_at                 DateTime?                    @default(now()) @db.Timestamp(6)
+  birthday                   DateTime?                    @db.Date
+  phone                      String?                      @db.VarChar(30)
+  address                    String?
+  room                       String?                      @db.VarChar(10)
+  photo_url                  String?
+  prefix                     String?                      @db.VarChar(20)
+  gender                     String?                      @db.VarChar(20)
+  status                     String?                      @db.VarChar(50)
+  parent_name                String?                      @db.VarChar(150)
+  parent_phone               String?                      @db.VarChar(30)
+  advisor_evaluation_results advisor_evaluation_results[]
+  attendance                 attendance[]
+  grades                     grades[]
+  registrations              registrations[]
+  scores                     scores[]
+  student_conduct            student_conduct[]
+  student_fitness_tests      student_fitness_tests[]
+  student_health             student_health[]
+  student_vaccinations       student_vaccinations[]
+  subject_evaluation_results subject_evaluation_results[]
+}
+
+model subject_evaluation_results {
+  id               Int              @id @default(autoincrement())
+  student_id       Int
+  teacher_id       Int
+  section_id       Int
+  topic            String           @db.VarChar(255)
+  score            Int?
+  year             Int
+  semester         Int
+  created_at       DateTime?        @default(now()) @db.Timestamp(6)
+  subject_sections subject_sections @relation(fields: [section_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  students         students         @relation(fields: [student_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  teachers         teachers         @relation(fields: [teacher_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model subject_sections {
+  id                         Int                          @id @default(autoincrement())
+  subject_id                 Int?
+  teacher_id                 Int?
+  year                       Int?
+  semester                   Int?
+  class_level                String?                      @db.VarChar(10)
+  classroom                  String?                      @db.VarChar(10)
+  day_of_week                String?                      @db.VarChar(20)
+  time_range                 String?                      @db.VarChar(50)
+  room                       String?                      @db.VarChar(10)
+  attendance                 attendance[]
+  grade_thresholds           grade_thresholds?
+  grades                     grades[]
+  registrations              registrations[]
+  score_items                score_items[]
+  subject_evaluation_results subject_evaluation_results[]
+  subjects                   subjects?                    @relation(fields: [subject_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  teachers                   teachers?                    @relation(fields: [teacher_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model subjects {
+  id               Int                @id @default(autoincrement())
+  subject_code     String?            @unique @db.VarChar(20)
+  name             String             @db.VarChar(255)
+  credit           Decimal?           @db.Decimal
+  name_th          String?            @db.VarChar(255)
+  name_en          String?            @db.VarChar(255)
+  subject_type     String?            @db.VarChar(50)
+  subject_group    String?            @db.VarChar(100)
+  level            String?            @db.VarChar(50)
+  total_hours      Int?
+  description      String?
+  year             Int?
+  semester         Int?
+  subject_sections subject_sections[]
+}
+
+model teacher_advisors {
+  id          Int       @id @default(autoincrement())
+  teacher_id  Int
+  class_level String    @db.VarChar(10)
+  year        Int
+  semester    Int
+  created_at  DateTime? @default(now()) @db.Timestamp(6)
+  room        String?   @db.VarChar(10)
+  teachers    teachers  @relation(fields: [teacher_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model teacher_attendance {
+  id          Int       @id @default(autoincrement())
+  teacher_id  Int
+  student_id  Int
+  subject_id  Int
+  class_level String    @db.VarChar(20)
+  room        String    @db.VarChar(10)
+  status      String    @db.VarChar(10)
+  date        DateTime  @db.Date
+  created_at  DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model teacher_calendar {
+  id          Int       @id @default(autoincrement())
+  title       String?   @db.VarChar(255)
+  description String?
+  event_date  DateTime? @db.Date
+  created_at  DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model teacher_homeroom {
+  id         Int      @id @default(autoincrement())
+  teacher_id Int
+  level      String?  @db.VarChar(10)
+  room       String?  @db.VarChar(10)
+  teachers   teachers @relation(fields: [teacher_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model teachers {
+  id                         Int                          @id @default(autoincrement())
+  teacher_code               String                       @unique @db.VarChar(20)
+  first_name                 String?                      @db.VarChar(100)
+  last_name                  String?                      @db.VarChar(100)
+  password_hash              String
+  created_at                 DateTime?                    @default(now()) @db.Timestamp(6)
+  photo_url                  String?
+  prefix                     String?                      @db.VarChar(20)
+  national_id                String?                      @db.VarChar(30)
+  birthday                   DateTime?                    @db.Date
+  gender                     String?                      @db.VarChar(20)
+  blood_group                String?                      @db.VarChar(5)
+  employment_type            String?                      @db.VarChar(50)
+  position                   String?                      @db.VarChar(100)
+  academic_rank              String?                      @db.VarChar(100)
+  department                 String?                      @db.VarChar(100)
+  start_date                 DateTime?                    @db.Date
+  end_date                   DateTime?                    @db.Date
+  license_no                 String?                      @db.VarChar(50)
+  salary                     Decimal?                     @db.Decimal(12, 2)
+  status                     String?                      @db.VarChar(50)
+  phone                      String?                      @db.VarChar(30)
+  email                      String?                      @db.VarChar(120)
+  line_id                    String?                      @db.VarChar(60)
+  advisor_evaluation_results advisor_evaluation_results[]
+  duty_teachers              duty_teachers[]
+  student_fitness_tests      student_fitness_tests[]
+  subject_evaluation_results subject_evaluation_results[]
+  subject_sections           subject_sections[]
+  teacher_advisors           teacher_advisors[]
+  teacher_homeroom           teacher_homeroom[]
+}
