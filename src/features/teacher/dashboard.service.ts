@@ -2,40 +2,56 @@ import { prisma } from '@/lib/prisma';
 
 export const TeacherDashboardService = {
     async getSummary(teacher_id: number) {
-        const studentCount = await prisma.registrations.findMany({
+        // Count distinct students enrolled in this teacher's assignments
+        const enrollments = await prisma.enrollments.findMany({
             where: {
-                subject_sections: { teacher_id }
+                teaching_assignments: { teacher_id }
             },
             select: { student_id: true },
             distinct: ['student_id']
         });
 
-        const subjectCount = await prisma.subject_sections.count({
+        // Count teaching assignments (subjects)
+        const subjectCount = await prisma.teaching_assignments.count({
             where: { teacher_id }
         });
 
-        const calendarEvents = await prisma.teacher_calendar.findMany({
-            orderBy: { event_date: 'asc' }
-        });
-
-        const scoreItemCount = await prisma.score_items.count({
+        // Count assessment items across teacher's assignments
+        const assessmentCount = await prisma.assessment_items.count({
             where: {
-                subject_sections: { teacher_id }
+                grade_categories: {
+                    teaching_assignments: { teacher_id }
+                }
             }
         });
 
+        // Get upcoming events
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        const upcomingEvents = calendarEvents.filter(e => e.event_date && new Date(e.event_date) >= today);
+        const upcomingEvents = await prisma.events.findMany({
+            where: {
+                start_datetime: { gte: today }
+            },
+            orderBy: { start_datetime: 'asc' },
+            take: 5
+        });
+
+        const totalEvents = await prisma.events.count();
 
         return {
-            students: studentCount.length,
+            students: enrollments.length,
             subjects: subjectCount,
-            scoreItems: scoreItemCount,
-            allEvents: calendarEvents.length,
+            scoreItems: assessmentCount,
+            allEvents: totalEvents,
             upcomingEvents: upcomingEvents.length,
-            recentEvents: upcomingEvents.slice(0, 5)
+            recentEvents: upcomingEvents.map(e => ({
+                id: e.id,
+                title: e.title,
+                date: e.start_datetime,
+                event_date: e.start_datetime,
+                location: e.location || '',
+            }))
         };
     }
 };

@@ -11,27 +11,12 @@ export async function GET(request: Request) {
         const student_id = sessionResult.studentId;
 
         const { searchParams } = new URL(request.url);
-        const yearParsed = parseIntegerParam(searchParams.get('year'), { required: true, min: 1 });
-        if (!yearParsed.ok) return errorResponse("Invalid parameter: year", 400, yearParsed.error);
-        const semesterParsed = parseIntegerParam(searchParams.get('semester'), { required: true, min: 1 });
-        if (!semesterParsed.ok) return errorResponse("Invalid parameter: semester", 400, semesterParsed.error);
-        const year = yearParsed.value!;
-        const semester = semesterParsed.value!;
+        const semesterParsed = parseIntegerParam(searchParams.get('semester_id'));
+        const semesterId = semesterParsed.ok ? semesterParsed.value : undefined;
 
-        const data = await RegistrationService.getCart(student_id, year, semester);
-
-        // Map data to match old API response structure for frontend compatibility
-        const formattedData = data.map((item: any) => ({
-            ...item,
-            subject_code: item.subject_sections?.subjects?.subject_code,
-            subject_name: item.subject_sections?.subjects?.name,
-            credit: item.subject_sections?.subjects?.credit,
-            time_range: item.subject_sections?.time_range,
-            day_of_week: item.subject_sections?.day_of_week,
-            teacher_name: item.subject_sections?.teachers ? `${item.subject_sections.teachers.first_name} ${item.subject_sections.teachers.last_name}` : null
-        }));
-
-        return successResponse(formattedData, "Cart retrieved");
+        // In presentATOM, cart = enrolled items (no separate cart status)
+        const data = await RegistrationService.getRegistered(student_id, semesterId ?? undefined);
+        return successResponse(data, "Cart retrieved");
     } catch (error: any) {
         return errorResponse("Failed to retrieve cart", 500, error.message);
     }

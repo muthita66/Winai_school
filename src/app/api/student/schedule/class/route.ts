@@ -11,27 +11,15 @@ export async function GET(request: Request) {
         const student_id = sessionResult.studentId;
 
         const { searchParams } = new URL(request.url);
-        const yearParsed = parseIntegerParam(searchParams.get('year'), { required: true, min: 1 });
-        if (!yearParsed.ok) return errorResponse("Invalid parameter: year", 400, yearParsed.error);
-        const semesterParsed = parseIntegerParam(searchParams.get('semester'), { required: true, min: 1 });
-        if (!semesterParsed.ok) return errorResponse("Invalid parameter: semester", 400, semesterParsed.error);
-        const year = yearParsed.value!;
-        const semester = semesterParsed.value!;
+        const yearParsed = parseIntegerParam(searchParams.get('year'));
+        const semesterParsed = parseIntegerParam(searchParams.get('semester'));
 
-        const data = await ScheduleService.getClassSchedule(student_id, year, semester);
+        const year = yearParsed.ok ? yearParsed.value : undefined;
+        const semester = semesterParsed.ok ? semesterParsed.value : undefined;
 
-        // Map data to match old API response structure for frontend compatibility
-        const formattedData = data.map((item: any) => ({
-            day_of_week: item.subject_sections?.day_of_week,
-            time_range: item.subject_sections?.time_range,
-            subject_code: item.subject_sections?.subjects?.subject_code,
-            subject_name: item.subject_sections?.subjects?.name,
-            teacher: item.subject_sections?.teachers ? `${item.subject_sections.teachers.first_name} ${item.subject_sections.teachers.last_name}` : null,
-            room: item.subject_sections?.room,
-            classroom: item.subject_sections?.classroom
-        }));
+        const data = await ScheduleService.getClassSchedule(student_id, year ?? undefined, semester ?? undefined);
 
-        return successResponse(formattedData, "Class schedule retrieved");
+        return successResponse(data, "Class schedule retrieved");
     } catch (error: any) {
         return errorResponse("Failed to retrieve class schedule", 500, error.message);
     }

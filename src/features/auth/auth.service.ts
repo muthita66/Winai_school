@@ -3,61 +3,96 @@ import bcrypt from 'bcryptjs';
 
 export const AuthService = {
     async authenticateUser(code: string, password: string, role: string) {
-        let user = null;
-        let payload = null;
-
-        if (role === 'student') {
-            const student = await prisma.students.findUnique({
-                where: { student_code: code }
-            });
-            if (student && await bcrypt.compare(password, student.password_hash)) {
-                user = student;
-                const fullName = [student.prefix, student.first_name, student.last_name].filter(Boolean).join(' ').trim();
-                payload = {
-                    id: student.id,
-                    code: student.student_code,
-                    role: 'student',
-                    name: fullName || student.student_code,
-                    photo_url: student.photo_url,
-                    class_level: student.class_level,
-                    room: student.room
-                };
-            }
-        } else if (role === 'teacher') {
-            const teacher = await prisma.teachers.findUnique({
-                where: { teacher_code: code }
-            });
-            if (teacher && await bcrypt.compare(password, teacher.password_hash)) {
-                user = teacher;
-                const fullName = [teacher.prefix, teacher.first_name, teacher.last_name].filter(Boolean).join(' ').trim();
-                payload = {
-                    id: teacher.id,
-                    code: teacher.teacher_code,
-                    role: 'teacher',
-                    name: fullName || teacher.teacher_code,
-                    photo_url: teacher.photo_url
-                };
-            }
-        } else if (role === 'director') {
-            const director = await prisma.directors.findUnique({
-                where: { director_code: code }
-            });
-            if (director && await bcrypt.compare(password, director.password_hash)) {
-                user = director;
-                const fullName = [director.first_name, director.last_name].filter(Boolean).join(' ').trim();
-                payload = {
-                    id: director.id,
-                    code: director.director_code,
-                    role: 'director',
-                    name: fullName || director.director_code,
-                    photo_url: director.photo_url
-                };
-            }
-        }
+        // 1. Find user by username (student_code / teacher_code / director code)
+        const user = await prisma.users.findUnique({
+            where: { username: code },
+            include: {
+                roles: true,
+                students: {
+                    include: {
+                        name_prefixes: true,
+                        classrooms: {
+                            include: {
+                                grade_levels: true,
+                            },
+                        },
+                    },
+                },
+                teachers: {
+                    include: {
+                        name_prefixes: true,
+                    },
+                },
+            },
+        });
 
         if (!user) {
-            throw new Error('Invalid credentials or user not found');
+            throw new Error('ไม่พบผู้ใช้ในระบบ');
         }
+
+        // 2. Check role match
+        const userRole = user.roles.role_name.toLowerCase();
+        if (userRole !== role.toLowerCase()) {
+            throw new Error('บทบาทไม่ตรงกับผู้ใช้');
+        }
+
+        // 3. Verify password (password_hash is on users table)
+        const isValid = await bcrypt.compare(password, user.password_hash);
+        if (!isValid) {
+            throw new Error('รหัสผ่านไม่ถูกต้อง');
+        }
+
+        // 4. Build payload based on role
+        let payload: any = null;
+
+        if (role === 'student' && user.students) {
+            const s = user.students;
+            const prefix = s.name_prefixes?.prefix_name || '';
+            const fullName = [prefix, s.first_name, s.last_name].filter(Boolean).join(' ').trim();
+            const classLevel = s.classrooms?.grade_levels?.name || '';
+            const room = s.classrooms?.room_name || '';
+
+            payload = {
+                id: s.id,
+                userId: user.id,
+                code: s.student_code,
+                role: 'student',
+                name: fullName || s.student_code,
+                class_level: classLevel,
+                room: room,
+            };
+        } else if (role === 'teacher' && user.teachers) {
+            const t = user.teachers;
+            const prefix = t.name_prefixes?.prefix_name || '';
+            const fullName = [prefix, t.first_name, t.last_name].filter(Boolean).join(' ').trim();
+
+            payload = {
+                id: t.id,
+                userId: user.id,
+                code: t.teacher_code,
+                role: 'teacher',
+                name: fullName || t.teacher_code,
+            };
+        } else if (role === 'director') {
+            // Director has no separate profile table — use users data
+            payload = {
+                id: user.id,
+                userId: user.id,
+                code: user.username,
+                role: 'director',
+                name: user.username,
+            };
+        }
+
+        if (!payload) {
+            throw new Error('ไม่พบข้อมูลโปรไฟล์ผู้ใช้');
+        }
+
+        // 5. Update last_login
+        await prisma.users.update({
+            where: { id: user.id },
+            data: { last_login: new Date() },
+        });
 
         return payload;
     }

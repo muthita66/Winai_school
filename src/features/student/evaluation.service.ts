@@ -1,134 +1,181 @@
 import { prisma } from '@/lib/prisma';
 
+async function getStudentUserId(student_id: number) {
+    if (!student_id) return null;
+    const student = await prisma.students.findUnique({
+        where: { id: student_id },
+        select: { user_id: true },
+    });
+    return student?.user_id ?? null;
+}
+
+async function resolveEvaluationPeriodId(year?: number, semester?: number) {
+    if (!year || !semester) return null;
+
+    const period = await prisma.evaluation_periods.findFirst({
+        where: {
+            semesters: {
+                semester_number: semester,
+                academic_years: { year_name: String(year) },
+            },
+        },
+        select: { id: true },
+        orderBy: { id: 'desc' },
+    });
+
+    return period?.id ?? null;
+}
+
 export const EvaluationService = {
-    // 1. Get Evaluation Topics
+    // Get question topics (flattened) for current UI
     async getTopics(year?: number, semester?: number) {
+        void year;
+        void semester;
 
-        // Seed topics from results if necessary
-        if (year && semester) {
-            const existingCount = await prisma.competency_topics.count({
-                where: { year, semester }
+        const forms = await prisma.evaluation_forms.findMany({
+            include: {
+                evaluation_questions: { orderBy: { id: 'asc' } },
+            },
+            orderBy: { id: 'asc' },
+        });
+
+        const questions = forms.flatMap((f) =>
+            f.evaluation_questions.map((q) => ({
+                id: q.id,
+                form_id: f.id,
+                type: q.question_type || 'scale',
+                name: q.question_text,
+            }))
+        );
+
+        if (questions.length > 0) {
+            const seen = new Set<string>();
+            return questions.filter((q) => {
+                const key = `${q.form_id}:${q.name}`;
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
             });
-
-            if (existingCount === 0) {
-                // Try to seed from distinct competency_results
-                const distinctResults = await prisma.competency_results.findMany({
-                    where: { year, semester },
-                    distinct: ['name'],
-                    select: { name: true },
-                    orderBy: { name: 'asc' }
-                });
-
-                if (distinctResults.length > 0) {
-                    const topicsToCreate = distinctResults.map((r, index) => ({
-                        name: r.name,
-                        year: year,
-                        semester: semester,
-                        order_index: index + 1
-                    }));
-
-                    await prisma.competency_topics.createMany({
-                        data: topicsToCreate,
-                        skipDuplicates: true
-                    });
-                }
-            }
         }
 
-        // Fetch topics
-        const whereClause: any = {};
-        if (year) whereClause.year = year;
-        if (semester) whereClause.semester = semester;
+        return forms.map((f) => ({
+            id: f.id,
+            form_id: f.id,
+            type: 'scale',
+            name: f.name,
+        }));
+    },
 
-        return prisma.competency_topics.findMany({
+    // Used by frontend only to check if student has submitted evaluation already
+    async getCompetencyResults(student_id: number, year?: number, semester?: number, section_id?: number | null) {
+        if (!student_id) return [];
+        void section_id;
+
+        const user_id = await getStudentUserId(student_id);
+        if (!user_id) return [];
+
+        const whereClause: any = { user_id };
+        const period_id = await resolveEvaluationPeriodId(year, semester);
+        if (period_id) whereClause.period_id = period_id;
+
+        const responses = await prisma.evaluation_responses.findMany({
             where: whereClause,
-            orderBy: [
-                { order_index: 'asc' },
-                { id: 'asc' }
-            ],
-            select: {
-                id: true,
-                name: true,
-                year: true,
-                semester: true,
-                order_index: true
-            }
+            include: {
+                evaluation_forms: true,
+                evaluation_answers: {
+                    include: { evaluation_questions: true },
+                },
+            },
+            orderBy: { submitted_at: 'desc' },
         });
+
+        return responses.map((r) => ({
+            id: r.id,
+            form_id: r.form_id,
+            form_name: r.evaluation_forms?.name || '',
+            submitted_at: r.submitted_at,
+            answers: r.evaluation_answers.map((a) => ({
+                question: a.evaluation_questions?.question_text || a.answer_text || '',
+                answer: a.answer_text || '',
+                score: a.score != null ? Number(a.score) : null,
+            })),
+        }));
     },
 
-    async getCompetencyResults(student_id: number, year: number, semester: number, section_id?: number) {
-        if (!student_id || !year || !semester) return [];
-        const whereClause: any = { student_id, year, semester };
-        if (section_id) whereClause.section_id = section_id;
-
-        return prisma.competency_results.findMany({
-            where: whereClause
-        });
-    },
-
-    // 3. Submit Evaluation
+    // Submit from current frontend payload: [{name, score}] + year/semester/section_id + feedback
     async submitEvaluation(
         student_id: number,
         year: number,
         semester: number,
         section_id: number | null,
-        data: { name: string, score: number }[],
+        data: { name: string; score: number }[],
         feedback?: string
     ) {
-        if (!student_id || !year || !semester) throw new Error("Missing required evaluation parameters");
+        if (!student_id || !year || !semester) {
+            throw new Error('Missing required evaluation parameters');
+        }
+        void section_id;
 
-        // We use a transaction to ensure clean delete and insert
-        return prisma.$transaction(async (tx) => {
-            // Delete existing results for the same scope
-            const whereClause: any = { student_id, year, semester };
-            if (section_id) {
-                whereClause.section_id = section_id;
+        const user_id = await getStudentUserId(student_id);
+        if (!user_id) throw new Error('Student not found');
 
-                // Also delete existing feedback if section_id is provided
-                await tx.competency_feedback.deleteMany({
-                    where: { student_id, section_id, year, semester }
-                });
-            } else {
-                // The old backend also deleted results without section_id
-                // If section_id is null, delete all results for that scoped year/semester where section_id is null
-                // Note: Old backend `DELETE FROM competency_results WHERE student_id=$1 AND year=$2 AND semester=$3`
-                // This would delete ALL results for year/semester regardless of section_id if section_id was falsey.
-                // Assuming the intent was scoped deletion, we replicate exactly.
-                await tx.competency_results.deleteMany({
-                    where: { student_id, year, semester }
-                });
-            }
-
-            // Insert new feedback if provided and section_id exists
-            if (section_id && feedback && feedback.trim().length > 0) {
-                await tx.competency_feedback.create({
-                    data: {
-                        student_id,
-                        section_id,
-                        year,
-                        semester,
-                        feedback: feedback.trim()
-                    }
-                });
-            }
-
-            // Insert new result scores
-            if (data && data.length > 0) {
-                const newResults = data.map(item => ({
-                    student_id,
-                    section_id: section_id || null, // Allow null section_id
-                    name: item.name,
-                    score: item.score,
-                    year,
-                    semester
-                }));
-
-                await tx.competency_results.createMany({
-                    data: newResults
-                });
-            }
-
-            return { message: "บันทึกสำเร็จ" };
+        const forms = await prisma.evaluation_forms.findMany({
+            include: {
+                evaluation_questions: { select: { id: true, question_text: true } },
+            },
+            orderBy: { id: 'asc' },
         });
-    }
+        if (forms.length === 0) throw new Error('No evaluation form configured');
+
+        const form =
+            forms.find((f) => String(f.type || '').toLowerCase() !== 'advisor') ||
+            forms[0];
+
+        const questionByText = new Map<string, number>();
+        form.evaluation_questions.forEach((q) => {
+            const key = String(q.question_text || '').trim().toLowerCase();
+            if (key && !questionByText.has(key)) questionByText.set(key, q.id);
+        });
+
+        const period_id = await resolveEvaluationPeriodId(year, semester);
+
+        return prisma.$transaction(async (tx) => {
+            const response = await tx.evaluation_responses.create({
+                data: {
+                    form_id: form.id,
+                    user_id,
+                    period_id: period_id ?? null,
+                },
+            });
+
+            for (const item of data || []) {
+                const topicName = String(item?.name || '').trim();
+                const score = Number(item?.score);
+                const question_id = questionByText.get(topicName.toLowerCase()) ?? null;
+
+                await tx.evaluation_answers.create({
+                    data: {
+                        response_id: response.id,
+                        question_id,
+                        answer_text: question_id ? null : (topicName || null),
+                        score: Number.isFinite(score) ? score : null,
+                    },
+                });
+            }
+
+            const feedbackText = String(feedback || '').trim();
+            if (feedbackText) {
+                await tx.evaluation_answers.create({
+                    data: {
+                        response_id: response.id,
+                        question_id: null,
+                        answer_text: feedbackText,
+                        score: null,
+                    },
+                });
+            }
+
+            return { message: 'บันทึกสำเร็จ', response_id: response.id };
+        });
+    },
 };

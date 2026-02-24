@@ -50,8 +50,10 @@ export function AdvisorsFeature() {
     const [advisors, setAdvisors] = useState<any[]>([]);
     const [allAdvisors, setAllAdvisors] = useState<any[]>([]);
     const [teachers, setTeachers] = useState<any[]>([]);
+    const [studentCounts, setStudentCounts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [year, setYear] = useState(new Date().getFullYear());
+    const [loadError, setLoadError] = useState<string>("");
+    const [year, setYear] = useState(new Date().getFullYear() + 543);
     const [semester, setSemester] = useState(1);
 
     const [editingAdvisor, setEditingAdvisor] = useState<any | null>(null);
@@ -66,6 +68,7 @@ export function AdvisorsFeature() {
 
     const load = () => {
         setLoading(true);
+        setLoadError("");
         DirectorApiService.getAdvisors({ year, semester })
             .then(async (rows) => {
                 const list = rows || [];
@@ -103,7 +106,11 @@ export function AdvisorsFeature() {
                 setAdvisors(list);
                 setLoading(false);
             })
-            .catch(() => setLoading(false));
+            .catch((e: any) => {
+                setLoadError(e?.message || "โหลดข้อมูลไม่สำเร็จ");
+                setAdvisors([]);
+                setLoading(false);
+            });
     };
 
     useEffect(() => {
@@ -114,9 +121,11 @@ export function AdvisorsFeature() {
         Promise.all([
             DirectorApiService.getAdvisors().catch(() => []),
             DirectorApiService.getTeachers().catch(() => []),
-        ]).then(([advisorRows, teacherRows]) => {
+            DirectorApiService.getStudentCount().catch(() => []),
+        ]).then(([advisorRows, teacherRows, studentCountRows]) => {
             setAllAdvisors(advisorRows || []);
             setTeachers(teacherRows || []);
+            setStudentCounts(studentCountRows || []);
         });
     }, []);
 
@@ -207,11 +216,18 @@ export function AdvisorsFeature() {
     };
 
     const advisorSource = allAdvisors.length > 0 ? allAdvisors : advisors;
-    const classLevelOptions = uniqueSorted([...(advisorSource || []).map((a: any) => String(a.class_level || "")), form.class_level || ""]);
+    const classLevelOptions = uniqueSorted([
+        ...(advisorSource || []).map((a: any) => String(a.class_level || "")),
+        ...(studentCounts || []).map((r: any) => String(r.class_level || "")),
+        form.class_level || "",
+    ]);
     const roomOptions = uniqueSorted([
         ...(advisorSource || [])
             .filter((a: any) => !form.class_level || String(a.class_level || "") === form.class_level)
             .map((a: any) => String(a.room || "")),
+        ...(studentCounts || [])
+            .filter((r: any) => !form.class_level || String(r.class_level || "") === form.class_level)
+            .map((r: any) => String(r.room || "")),
         form.room || "",
     ]);
     const yearOptions = Array.from(new Set([...(advisorSource || []).map((a: any) => String(a.year ?? "")).filter(Boolean), form.year || "", String(year)]))
@@ -259,6 +275,17 @@ export function AdvisorsFeature() {
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-x-auto">
                 {loading ? (
                     <div className="p-8 text-center text-slate-500">กำลังโหลด...</div>
+                ) : loadError ? (
+                    <div className="p-6 text-center">
+                        <div className="text-sm text-red-600 font-medium">{loadError}</div>
+                        <button
+                            type="button"
+                            onClick={load}
+                            className="mt-3 px-4 py-2 rounded-xl border border-red-200 text-red-700 hover:bg-red-50 text-sm"
+                        >
+                            ลองใหม่
+                        </button>
+                    </div>
                 ) : advisors.length === 0 ? (
                     <div className="p-8 text-center text-slate-500">ไม่พบข้อมูล</div>
                 ) : (

@@ -17,6 +17,20 @@ function uniqueSorted(values: string[]) {
     return Array.from(new Set(values.filter((v) => v.trim() !== ""))).sort((a, b) => a.localeCompare(b, "th"));
 }
 
+function roomOnlyLabel(roomValue: unknown, classLevel?: unknown) {
+    const room = String(roomValue || "").trim();
+    if (!room) return "";
+
+    const level = String(classLevel || "").trim();
+    if (level && room.startsWith(level)) {
+        const rest = room.slice(level.length).trim();
+        if (!rest) return room;
+        return rest.replace(/^\/+/, "").trim() || room;
+    }
+
+    return room;
+}
+
 function emptySectionForm(currentYear?: number, currentSemester?: number): SectionFormState {
     return {
         subject_id: "",
@@ -34,8 +48,8 @@ function buildSectionPayload(form: SectionFormState) {
     const subject_id = Number(form.subject_id);
     if (!form.subject_id || Number.isNaN(subject_id)) throw new Error("กรุณาเลือกรายวิชา");
 
-    const teacher_id = form.teacher_id.trim() === "" ? null : Number(form.teacher_id);
-    if (teacher_id !== null && Number.isNaN(teacher_id)) throw new Error("Teacher ID ไม่ถูกต้อง");
+    const teacher_id = Number(form.teacher_id);
+    if (!form.teacher_id || Number.isNaN(teacher_id)) throw new Error("กรุณาเลือกผู้สอน");
 
     const nextYear = Number(form.year);
     if (!form.year || Number.isNaN(nextYear)) throw new Error("ปีไม่ถูกต้อง");
@@ -60,8 +74,9 @@ export function CurriculumFeature() {
     const [allSections, setAllSections] = useState<any[]>([]);
     const [subjects, setSubjects] = useState<any[]>([]);
     const [teachers, setTeachers] = useState<any[]>([]);
+    const [studentCounts, setStudentCounts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [year, setYear] = useState(new Date().getFullYear());
+    const [year, setYear] = useState(new Date().getFullYear() + 543);
     const [semester, setSemester] = useState(1);
 
     const [creatingSection, setCreatingSection] = useState(false);
@@ -123,10 +138,12 @@ export function CurriculumFeature() {
             DirectorApiService.getSubjects().catch(() => []),
             DirectorApiService.getTeachers().catch(() => []),
             DirectorApiService.getSections().catch(() => []),
-        ]).then(([subjectRows, teacherRows, sectionRows]) => {
+            DirectorApiService.getStudentCount().catch(() => []),
+        ]).then(([subjectRows, teacherRows, sectionRows, studentCountRows]) => {
             setSubjects(subjectRows || []);
             setTeachers(teacherRows || []);
             setAllSections(sectionRows || []);
+            setStudentCounts(studentCountRows || []);
         });
     }, []);
 
@@ -145,15 +162,20 @@ export function CurriculumFeature() {
     const openEditModal = (section: any) => {
         setCreatingSection(false);
         setEditingSection(section);
+        const firstSchedule = Array.isArray(section.class_schedules) ? section.class_schedules[0] : null;
+        const period = firstSchedule?.periods;
+        const timeRangeFallback = period?.start_time && period?.end_time
+            ? `${new Date(period.start_time).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" })}-${new Date(period.end_time).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" })}`
+            : "";
         setForm({
             subject_id: section.subject_id == null ? "" : String(section.subject_id),
             teacher_id: section.teacher_id == null ? "" : String(section.teacher_id),
-            class_level: section.class_level ?? "",
-            classroom: section.classroom ?? "",
-            day_of_week: section.day_of_week ?? "",
-            time_range: section.time_range ?? "",
-            year: section.year == null ? String(year) : String(section.year),
-            semester: section.semester == null ? String(semester) : String(section.semester),
+            class_level: section.class_level ?? section.classrooms?.grade_levels?.name ?? "",
+            classroom: section.classroom ?? section.classrooms?.room_name ?? "",
+            day_of_week: section.day_of_week ?? firstSchedule?.day_of_weeks?.day_name_th ?? "",
+            time_range: section.time_range ?? timeRangeFallback,
+            year: section.year == null ? (section.semesters?.academic_years?.year_name ? String(section.semesters.academic_years.year_name) : String(year)) : String(section.year),
+            semester: section.semester == null ? (section.semesters?.semester_number != null ? String(section.semesters.semester_number) : String(semester)) : String(section.semester),
         });
     };
 
@@ -226,11 +248,18 @@ export function CurriculumFeature() {
     };
 
     const optionSource = allSections.length > 0 ? allSections : sections;
-    const classLevelOptions = uniqueSorted([...(optionSource || []).map((s: any) => String(s.class_level || "")), form.class_level || ""]);
+    const classLevelOptions = uniqueSorted([
+        ...(optionSource || []).map((s: any) => String(s.class_level || s.classrooms?.grade_levels?.name || "")),
+        ...(studentCounts || []).map((r: any) => String(r.class_level || "")),
+        form.class_level || ""
+    ]);
     const roomOptions = uniqueSorted([
         ...(optionSource || [])
-            .filter((s: any) => !form.class_level || String(s.class_level || "") === form.class_level)
-            .map((s: any) => String(s.classroom || "")),
+            .filter((s: any) => !form.class_level || String(s.class_level || s.classrooms?.grade_levels?.name || "") === form.class_level)
+            .map((s: any) => String(s.classroom || s.classrooms?.room_name || "")),
+        ...(studentCounts || [])
+            .filter((r: any) => !form.class_level || String(r.class_level || "") === form.class_level)
+            .map((r: any) => String(r.room || "")),
         form.classroom || "",
     ]);
     const yearOptions = Array.from(new Set([...(optionSource || []).map((s: any) => String(s.year ?? "")).filter(Boolean), form.year || "", String(year)]))
@@ -252,7 +281,7 @@ export function CurriculumFeature() {
         : Array.from(new Map(
             (optionSource || [])
                 .filter((s: any) => s?.subject_id != null)
-                .map((s: any) => [Number(s.subject_id), { id: Number(s.subject_id), subject_code: s.subjects?.subject_code || "", name: s.subjects?.name || "" }])
+                .map((s: any) => [Number(s.subject_id), { id: Number(s.subject_id), subject_code: s.subjects?.subject_code || "", name: s.subjects?.name || s.subjects?.subject_name || "" }])
         ).values());
 
     const teacherOptions = teachers.length > 0
@@ -318,11 +347,17 @@ export function CurriculumFeature() {
                         <tbody>
                             {sections.map((s, i) => (
                                 <tr key={s.id} className="border-b border-slate-100 hover:bg-slate-50">
+                                    {(() => {
+                                        const classLevel = s.class_level || s.classrooms?.grade_levels?.name || "-";
+                                        const rawRoom = s.classroom || s.classrooms?.room_name || "-";
+                                        const roomLabel = roomOnlyLabel(rawRoom, classLevel) || "-";
+                                        return (
+                                            <>
                                     <td className="px-4 py-3 text-sm text-slate-500">{i + 1}</td>
                                     <td className="px-4 py-3 text-sm font-mono text-slate-700">{s.subjects?.subject_code || "-"}</td>
-                                    <td className="px-4 py-3 text-sm text-slate-800 font-medium">{s.subjects?.name || "-"}</td>
+                                    <td className="px-4 py-3 text-sm text-slate-800 font-medium">{s.subjects?.name || s.subjects?.subject_name || "-"}</td>
                                     <td className="px-4 py-3 text-sm text-slate-600">{s.teachers ? `${s.teachers.first_name} ${s.teachers.last_name}` : "-"}</td>
-                                    <td className="px-4 py-3 text-sm text-slate-600">{s.class_level || "-"}/{s.classroom || "-"}</td>
+                                    <td className="px-4 py-3 text-sm text-slate-600">{classLevel}/{roomLabel}</td>
                                     <td className="px-4 py-3 text-sm text-slate-600">{s.day_of_week || "-"} {s.time_range || ""}</td>
                                     <td className="px-4 py-3 text-center">
                                         <div className="flex items-center justify-center gap-2">
@@ -330,6 +365,9 @@ export function CurriculumFeature() {
                                             <button onClick={() => handleDelete(s.id)} className="text-xs text-red-500 hover:text-red-700 bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-100 transition-colors font-medium">ลบ</button>
                                         </div>
                                     </td>
+                                            </>
+                                        );
+                                    })()}
                                 </tr>
                             ))}
                         </tbody>
@@ -360,20 +398,20 @@ export function CurriculumFeature() {
                                         )}
                                         {subjectOptions.map((s: any) => (
                                             <option key={s.id} value={String(s.id)}>
-                                                {s.subject_code ? `${s.subject_code} - ` : ""}{s.name || `Subject #${s.id}`}
+                                                {s.subject_code ? `${s.subject_code} - ` : ""}{s.name || s.subject_name || `Subject #${s.id}`}
                                             </option>
                                         ))}
                                     </select>
                                 </label>
 
                                 <label className="block">
-                                    <span className="text-sm font-medium text-slate-700">ผู้สอน (เว้นว่างได้)</span>
+                                    <span className="text-sm font-medium text-slate-700">ผู้สอน</span>
                                     <select
                                         value={form.teacher_id}
                                         onChange={(e) => setForm((p) => ({ ...p, teacher_id: e.target.value }))}
                                         className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-cyan-500 bg-white"
                                     >
-                                        <option value="">- ไม่ระบุ -</option>
+                                        <option value="">- เลือกผู้สอน -</option>
                                         {form.teacher_id && !teacherOptions.some((t: any) => String(t.id) === form.teacher_id) && (
                                             <option value={form.teacher_id}>{`Teacher #${form.teacher_id}`}</option>
                                         )}
@@ -408,7 +446,7 @@ export function CurriculumFeature() {
                                     >
                                         <option value="">- เลือกห้อง -</option>
                                         {roomOptions.map((room) => (
-                                            <option key={room} value={room}>{room}</option>
+                                            <option key={room} value={room}>{roomOnlyLabel(room, form.class_level) || room}</option>
                                         ))}
                                     </select>
                                 </label>

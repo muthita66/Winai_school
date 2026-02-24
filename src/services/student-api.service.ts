@@ -1,6 +1,11 @@
 import { fetchApi } from './api-client';
 
 export const StudentApiService = {
+    // --- Dashboard ---
+    async getDashboardSummary() {
+        return fetchApi<any>('/api/student/dashboard');
+    },
+
     // ---- Registration ----
     async searchSubjects(keyword: string, year?: number, semester?: number) {
         let url = `/api/student/registration/search?keyword=${encodeURIComponent(keyword)}`;

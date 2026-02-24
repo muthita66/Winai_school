@@ -3,23 +3,35 @@ import { prisma } from '@/lib/prisma';
 export const ProfileService = {
     async getProfile(student_id: number) {
         if (!student_id) return null;
-        return prisma.students.findUnique({
+        const s = await prisma.students.findUnique({
             where: { id: student_id },
-            select: {
-                id: true,
-                student_code: true,
-                first_name: true,
-                last_name: true,
-                class_level: true,
-                classroom: true,
-                room: true,
-                birthday: true,
-                phone: true,
-                address: true,
-                photo_url: true,
-                prefix: true
+            include: {
+                name_prefixes: true,
+                classrooms: {
+                    include: { grade_levels: true, programs: true }
+                },
+                genders: true,
+                student_statuses: true,
             }
         });
+        if (!s) return null;
+        return {
+            id: s.id,
+            student_code: s.student_code,
+            prefix: s.name_prefixes?.prefix_name || '',
+            first_name: s.first_name,
+            last_name: s.last_name,
+            gender: s.genders?.name || '',
+            class_level: s.classrooms?.grade_levels?.name || '',
+            room: s.classrooms?.room_name || '',
+            program: s.classrooms?.programs?.name || '',
+            status: s.student_statuses?.status_name || '',
+            date_of_birth: s.date_of_birth,
+            phone: s.phone || '',
+            address: s.address || '',
+            admission_year: s.admission_year,
+            enrollment_date: s.enrollment_date,
+        };
     },
 
     async updateProfile(student_id: number, data: any) {
@@ -27,12 +39,11 @@ export const ProfileService = {
         return prisma.students.update({
             where: { id: student_id },
             data: {
-                prefix: data.prefix || null,
-                first_name: data.first_name || null,
-                last_name: data.last_name || null,
-                birthday: data.birthday ? new Date(data.birthday) : null,
-                phone: data.phone || null,
-                address: data.address || null
+                first_name: data.first_name || undefined,
+                last_name: data.last_name || undefined,
+                date_of_birth: data.date_of_birth ? new Date(data.date_of_birth) : undefined,
+                phone: data.phone || undefined,
+                address: data.address || undefined,
             }
         });
     }

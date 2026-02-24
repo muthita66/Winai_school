@@ -2,8 +2,10 @@ import { fetchApi } from './api-client';
 
 export const TeacherApiService = {
     // --- Dashboard ---
-    async getDashboardSummary(teacher_id: number) {
-        return fetchApi<any>(`/api/teacher/dashboard?action=summary&teacher_id=${teacher_id}`);
+    async getDashboardSummary(teacher_id?: number) {
+        const params = new URLSearchParams({ action: 'summary' });
+        if (teacher_id) params.set('teacher_id', String(teacher_id));
+        return fetchApi<any>(`/api/teacher/dashboard?${params.toString()}`);
     },
 
     // --- Calendar ---

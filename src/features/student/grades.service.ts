@@ -2,65 +2,86 @@ import { prisma } from '@/lib/prisma';
 
 export const GradesService = {
     async getGrades(student_id: number, year?: number, semester?: number) {
-
-        // Ensure student_id is defined
         if (!student_id) return [];
 
-        const whereClause: any = {
-            student_id: student_id
-        };
+        // Build where clause
+        const enrollmentWhere: any = { student_id };
 
         if (year || semester) {
-            whereClause.subject_sections = {
-                ...(year ? { year: year } : {}),
-                ...(semester ? { semester: semester } : {})
+            enrollmentWhere.teaching_assignments = {
+                semesters: {
+                    ...(year ? { academic_years: { year_name: String(year) } } : {}),
+                    ...(semester ? { semester_number: semester } : {}),
+                }
             };
         }
 
-        // Fetch all registrations matching the criteria and include grades
-        const registrations = await prisma.registrations.findMany({
-            where: whereClause,
+        const enrollments = await prisma.enrollments.findMany({
+            where: enrollmentWhere,
             include: {
-                subject_sections: {
+                teaching_assignments: {
                     include: {
-                        subjects: true
+                        subjects: true,
+                        semesters: {
+                            include: { academic_years: true }
+                        },
+                        grade_categories: {
+                            include: {
+                                assessment_items: {
+                                    include: {
+                                        student_scores: {
+                                            where: { enrollments: { student_id } }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
+                },
+                final_grades: {
+                    include: { grade_scales: true }
                 }
             }
         });
 
-        // Fetch grades for this student
-        const gradesRecords = await prisma.grades.findMany({
-            where: { student_id: student_id }
-        });
-
-        // The old SQL used DISTINCT ON (s.subject_code), so we need to deduplicate by subject_code
-        // We also want to map to the structure expected by the old frontend
+        // Deduplicate by subject_code
         const uniqueSubjects = new Map();
 
-        registrations.forEach((reg: any) => {
-            const subjectCode = reg.subject_sections?.subjects?.subject_code;
-            if (!subjectCode) return;
+        enrollments.forEach(enrollment => {
+            const ta = enrollment.teaching_assignments;
+            const subject = ta.subjects;
+            if (!subject) return;
 
-            const sectionId = reg.section_id;
-            const gradeRecord = gradesRecords.find(g => g.section_id === sectionId);
+            // Calculate total score from assessment items
+            let totalScore = 0;
+            let maxPossible = 0;
 
-            // Simple deduction mapping, but should be accurate if a student only registers once per subject per term
-            if (!uniqueSubjects.has(subjectCode) || gradeRecord) {
-
-                uniqueSubjects.set(subjectCode, {
-                    subject: reg.subject_sections?.subjects?.name,
-                    subject_code: subjectCode,
-                    credit: reg.subject_sections?.subjects?.credit,
-                    total: gradeRecord?.total_score,
-                    grade: gradeRecord?.grade
+            ta.grade_categories.forEach(cat => {
+                cat.assessment_items.forEach(item => {
+                    maxPossible += Number(item.max_score || 0);
+                    const studentScore = item.student_scores?.[0];
+                    if (studentScore) {
+                        totalScore += Number(studentScore.score || 0);
+                    }
                 });
-            }
+            });
+
+            const finalGrade = enrollment.final_grades;
+
+            uniqueSubjects.set(subject.subject_code, {
+                subject_code: subject.subject_code,
+                subject: subject.subject_name,
+                credit: Number(subject.credit || 0),
+                total: finalGrade ? Number(finalGrade.total_score) : totalScore,
+                grade: finalGrade?.letter_grade || null,
+                grade_point: finalGrade?.grade_point ? Number(finalGrade.grade_point) : null,
+                year: ta.semesters?.academic_years?.year_name || '',
+                semester: ta.semesters?.semester_number || 0,
+            });
         });
 
-        // Convert Map back to array and sort by subject_code ASC
-        return Array.from(uniqueSubjects.values()).sort((a, b) => {
-            return a.subject_code.localeCompare(b.subject_code);
-        });
+        return Array.from(uniqueSubjects.values()).sort((a, b) =>
+            a.subject_code.localeCompare(b.subject_code)
+        );
     }
 };

@@ -1,5 +1,4 @@
 import { TeacherAttendanceService } from '@/features/teacher/attendance.service';
-import { TeacherScoresService } from '@/features/teacher/scores.service';
 import { successResponse, errorResponse } from '@/lib/api-response';
 
 export async function GET(request: Request) {
@@ -22,6 +21,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
     try {
         const { records } = await request.json();
+        if (!Array.isArray(records)) return errorResponse('records required', 400);
         const data = await TeacherAttendanceService.saveAttendance(records);
         return successResponse(data);
     } catch (error: any) {

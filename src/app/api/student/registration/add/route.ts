@@ -4,10 +4,8 @@ import { getSession } from '@/lib/auth';
 import { z } from 'zod';
 import { parseStudentIdFromSession } from '@/app/api/student/_utils';
 
-const addToCartSchema = z.object({
-    section_id: z.number().int().positive(),
-    year: z.number().int().positive(),
-    semester: z.number().int().positive(),
+const addSchema = z.object({
+    teaching_assignment_id: z.number().int().positive(),
 });
 
 export async function POST(request: Request) {
@@ -18,15 +16,15 @@ export async function POST(request: Request) {
         const student_id = sessionResult.studentId;
 
         const body = await request.json();
-        const parsed = addToCartSchema.safeParse(body);
+        const parsed = addSchema.safeParse(body);
         if (!parsed.success) {
             return errorResponse("Invalid payload format", 400, parsed.error.format());
         }
 
-        const { section_id, year, semester } = parsed.data;
-        const data = await RegistrationService.addToCart(student_id, section_id, year, semester);
-        return successResponse(data, "Subjects added to cart");
+        const { teaching_assignment_id } = parsed.data;
+        const data = await RegistrationService.addToCart(student_id, teaching_assignment_id);
+        return successResponse(data, "Enrolled successfully");
     } catch (error: any) {
-        return errorResponse("Failed to add to cart", 500, error.message);
+        return errorResponse(error.message || "Failed to enroll", 500, error.message);
     }
 }

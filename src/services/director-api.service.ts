@@ -157,4 +157,12 @@ export const DirectorApiService = {
         const q = params.toString();
         return fetchApi<any[]>(`/api/director/evaluation${q ? `?${q}` : ''}`);
     },
+
+    // --- Actors (Database Explorer) ---
+    async getActors() {
+        return fetchApi<any[]>('/api/director/actors');
+    },
+    async getActorData(name: string) {
+        return fetchApi<any>(`/api/director/actors?name=${encodeURIComponent(name)}`);
+    },
 };

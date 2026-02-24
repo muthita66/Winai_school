@@ -12,16 +12,53 @@ const num = (v: any) => {
     return Number.isFinite(n) ? n : 0;
 };
 const txt = (v: any) => String(v ?? "").trim();
+const GRADE_ORDER = ["4", "3.5", "3", "2.5", "2", "1.5", "1", "0"] as const;
+const GRADE_ALIAS_TO_NUMERIC: Record<string, string> = {
+    a: "4",
+    "a+": "4",
+    "4": "4",
+    "4.0": "4",
+    "b+": "3.5",
+    "3.5": "3.5",
+    b: "3",
+    "3": "3",
+    "3.0": "3",
+    "c+": "2.5",
+    "2.5": "2.5",
+    c: "2",
+    "2": "2",
+    "2.0": "2",
+    "d+": "1.5",
+    "1.5": "1.5",
+    d: "1",
+    "1": "1",
+    "1.0": "1",
+    f: "0",
+    "0": "0",
+    "0.0": "0",
+};
+
+function normalizeGradeLabel(grade: any) {
+    const raw = txt(grade).toLowerCase();
+    if (!raw) return "";
+    return GRADE_ALIAS_TO_NUMERIC[raw] || raw;
+}
+
+function displayGradeLabel(grade: any) {
+    return normalizeGradeLabel(grade) || txt(grade) || "0";
+}
 
 function badgeColor(grade: string) {
-    if (grade === "4") return "bg-green-50 text-green-700 border-green-200";
-    if (grade === "3.5") return "bg-emerald-50 text-emerald-700 border-emerald-200";
-    if (grade === "3") return "bg-teal-50 text-teal-700 border-teal-200";
-    if (grade === "2.5") return "bg-blue-50 text-blue-700 border-blue-200";
-    if (grade === "2") return "bg-sky-50 text-sky-700 border-sky-200";
-    if (grade === "1.5") return "bg-amber-50 text-amber-700 border-amber-200";
-    if (grade === "1") return "bg-orange-50 text-orange-700 border-orange-200";
-    return "bg-rose-50 text-rose-700 border-rose-200";
+    const normalized = displayGradeLabel(grade);
+    if (normalized === "4") return "bg-green-50 text-green-700 border-green-200";
+    if (normalized === "3.5") return "bg-emerald-50 text-emerald-700 border-emerald-200";
+    if (normalized === "3") return "bg-teal-50 text-teal-700 border-teal-200";
+    if (normalized === "2.5") return "bg-blue-50 text-blue-700 border-blue-200";
+    if (normalized === "2") return "bg-sky-50 text-sky-700 border-sky-200";
+    if (normalized === "1.5") return "bg-amber-50 text-amber-700 border-amber-200";
+    if (normalized === "1") return "bg-orange-50 text-orange-700 border-orange-200";
+    if (normalized === "0") return "bg-rose-50 text-rose-700 border-rose-200";
+    return "bg-slate-50 text-slate-700 border-slate-200";
 }
 
 export function GradeCutFeature({ session }: { session: any }) {
@@ -138,7 +175,7 @@ export function GradeCutFeature({ session }: { session: any }) {
         const maxPossible = count ? num(summary[0]?.max_possible) : 0;
         const avgScore = count ? Math.round((summary.reduce((s, r) => s + num(r.total_score), 0) / count) * 100) / 100 : 0;
         const distribution = summary.reduce<Record<string, number>>((acc, r) => {
-            const k = String(r.grade ?? "0");
+            const k = displayGradeLabel(r.grade);
             acc[k] = (acc[k] || 0) + 1;
             return acc;
         }, {});
@@ -148,7 +185,11 @@ export function GradeCutFeature({ session }: { session: any }) {
     const filteredSummary = useMemo(() => {
         const q = studentSearch.trim().toLowerCase();
         if (!q) return summary;
-        return summary.filter((r) => [r.student_code, r.first_name, r.last_name, r.grade].some((v) => txt(v).toLowerCase().includes(q)));
+        return summary.filter((r) =>
+            [r.student_code, r.first_name, r.last_name, r.grade, displayGradeLabel(r.grade)].some((v) =>
+                txt(v).toLowerCase().includes(q)
+            )
+        );
     }, [summary, studentSearch]);
 
     const saveThresholds = async () => {
@@ -400,7 +441,7 @@ export function GradeCutFeature({ session }: { session: any }) {
                         <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-500">ยังไม่มีข้อมูลสรุปคะแนน</div>
                     ) : (
                         <div className="mt-4 space-y-3">
-                            {["4", "3.5", "3", "2.5", "2", "1.5", "1", "0"].map((grade) => {
+                            {GRADE_ORDER.map((grade) => {
                                 const count = stats.distribution[grade] || 0;
                                 const pct = stats.count ? (count / stats.count) * 100 : 0;
                                 return (
@@ -431,7 +472,25 @@ export function GradeCutFeature({ session }: { session: any }) {
                                 <table className="w-full min-w-[860px]">
                                     <thead><tr className="bg-slate-50 border-b border-slate-200"><th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">รหัส</th><th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">ชื่อ-สกุล</th><th className="px-4 py-3 text-center text-sm font-semibold text-slate-600">คะแนนรวม/เต็ม</th><th className="px-4 py-3 text-center text-sm font-semibold text-slate-600">%</th><th className="px-4 py-3 text-center text-sm font-semibold text-slate-600">เกรด</th></tr></thead>
                                     <tbody>
-                                        {filteredSummary.map((s, i) => <tr key={`${s.student_id}-${i}`} className="border-b border-slate-100 hover:bg-slate-50/70"><td className="px-4 py-3 text-sm font-mono text-slate-700">{s.student_code}</td><td className="px-4 py-3 text-sm font-medium text-slate-800">{s.first_name} {s.last_name}</td><td className="px-4 py-3 text-center text-sm text-slate-700">{num(s.total_score)}/{num(s.max_possible)}</td><td className="px-4 py-3 text-center text-sm text-slate-700">{num(s.percentage)}%</td><td className="px-4 py-3 text-center"><span className={`inline-flex rounded-full border px-3 py-1 text-xs font-bold ${badgeColor(String(s.grade ?? "0"))}`}>{String(s.grade ?? "0")}</span></td></tr>)}
+                                        {filteredSummary.map((s, i) => {
+                                            const displayGrade = displayGradeLabel(s.grade);
+                                            return (
+                                                <tr key={`${s.student_id}-${i}`} className="border-b border-slate-100 hover:bg-slate-50/70">
+                                                    <td className="px-4 py-3 text-sm font-mono text-slate-700">{s.student_code}</td>
+                                                    <td className="px-4 py-3 text-sm font-medium text-slate-800">{s.first_name} {s.last_name}</td>
+                                                    <td className="px-4 py-3 text-center text-sm text-slate-700">{num(s.total_score)}/{num(s.max_possible)}</td>
+                                                    <td className="px-4 py-3 text-center text-sm text-slate-700">{num(s.percentage)}%</td>
+                                                    <td className="px-4 py-3 text-center">
+                                                        <span
+                                                            className={`inline-flex rounded-full border px-3 py-1 text-xs font-bold ${badgeColor(displayGrade)}`}
+                                                            title={txt(s.grade) && txt(s.grade) !== displayGrade ? `เดิม: ${txt(s.grade)}` : undefined}
+                                                        >
+                                                            {displayGrade}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             </div>

@@ -19,6 +19,7 @@ export default async function Sidebar() {
             { name: 'งบประมาณ', href: '/director/finance' },
             { name: 'กิจกรรม', href: '/director/activities' },
             { name: 'ผลการประเมิน', href: '/director/evaluation' },
+            { name: 'ข้อมูลทุก Actor', href: '/director/actors' },
         ],
         teacher: [
             { name: 'แดชบอร์ด', href: '/teacher/dashboard' },
