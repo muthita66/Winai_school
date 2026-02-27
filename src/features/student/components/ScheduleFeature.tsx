@@ -395,22 +395,14 @@ export function ScheduleFeature({ session }: ScheduleFeatureProps) {
                         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
                             <div className="flex items-center gap-3 mb-6">
                                 <h3 className="text-lg font-bold text-slate-800">ตารางเรียน</h3>
-                                <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-md">อัปเดตล่าสุด</span>
                             </div>
-
-                            <div className="flex flex-wrap gap-2 mb-4 text-xs">
-                                <span className="px-2 py-1 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200">ลงทะเบียนแล้ว</span>
-                                <span className="px-2 py-1 rounded-md bg-amber-50 text-amber-700 border border-amber-200">ตะกร้า</span>
-                                <span className="px-2 py-1 rounded-md bg-rose-50 text-rose-700 border border-rose-200">ชนเวลา</span>
-                            </div>
-
                             <div className="overflow-x-auto pb-4">
-                                <table className="w-full text-sm text-left border-collapse min-w-[800px]">
+                                <table className="w-full text-sm text-left border-collapse min-w-[1800px] table-fixed">
                                     <thead className="text-xs text-slate-700 bg-slate-50 border-b border-t border-slate-200">
                                         <tr>
                                             <th className="px-4 py-3 border-r border-slate-200 text-center w-24">วัน/เวลา</th>
                                             {fixedSlots.map(slot => (
-                                                <th key={slot} className="px-4 py-3 border-r border-slate-200 text-center">{slot}</th>
+                                                <th key={slot} className="px-4 py-3 border-r border-slate-200 text-center min-w-[200px]">{slot}</th>
                                             ))}
                                         </tr>
                                     </thead>
@@ -437,8 +429,8 @@ export function ScheduleFeature({ session }: ScheduleFeatureProps) {
                                                                         <div key={`${r.source || 'registered'}-${r.section_id || r.subject_code || i}-${i}`} className={`rounded-lg p-2 mb-2 last:mb-0 text-xs border ${r.source === 'cart' ? 'bg-amber-50 border-amber-200' : 'bg-indigo-50 border-indigo-100'}`}>
                                                                             <div className={`font-bold mb-1 ${r.source === 'cart' ? 'text-amber-700' : 'text-indigo-700'}`}>{r.subject_code || "-"}</div>
                                                                             <div className="text-slate-700 leading-snug break-words">{r.subject_name || "-"}</div>
-                                                                            <div className="mt-1 text-slate-600 break-words">ผู้สอน {r.teacher || "-"}</div>
-                                                                            <div className="mt-1 text-slate-500 break-words">ห้อง {r.room_name || r.room || "-"}</div>
+                                                                            <div className="mt-1 text-slate-600 whitespace-nowrap" title={`ผู้สอน ${r.teacher || "-"}`}>ผู้สอน {r.teacher || "-"}</div>
+                                                                            <div className="mt-1 text-slate-500 break-words">ห้อง {(r.room_name || r.room || "-").replace(/ห้องเรียน|ห้อง/g, "").trim()}</div>
                                                                         </div>
                                                                     ))}
                                                                     {matches.length > 1 && (

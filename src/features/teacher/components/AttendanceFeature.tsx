@@ -1,6 +1,16 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { TeacherApiService } from "@/services/teacher-api.service";
+
+const txt = (v: any) => String(v ?? "").trim();
+
+function getAcademicYearValue(section: any) {
+    return txt(section?.semesters?.academic_years?.year_name) || txt(section?.year);
+}
+
+function formatTermLabel(section: any) {
+    return `ปี ${getAcademicYearValue(section) || "-"} ภาค ${txt(section?.semester) || "-"}`;
+}
 
 function formatRoomLabel(classLevel?: string | null, room?: string | null) {
     const level = String(classLevel || "").trim();
@@ -14,6 +24,8 @@ function formatRoomLabel(classLevel?: string | null, room?: string | null) {
 
 export function AttendanceFeature({ session }: { session: any }) {
     const [subjects, setSubjects] = useState<any[]>([]);
+    const [selectedSubject, setSelectedSubject] = useState<string>("");
+    const [selectedRoom, setSelectedRoom] = useState<string>("");
     const [selectedSection, setSelectedSection] = useState<number | null>(null);
     const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
     const [students, setStudents] = useState<any[]>([]);
@@ -25,12 +37,29 @@ export function AttendanceFeature({ session }: { session: any }) {
         TeacherApiService.getTeacherSubjects(session.id).then(d => { setSubjects(d || []); setLoading(false); }).catch(() => setLoading(false));
     }, [session.id]);
 
-    const subjectOptions = (subjects || []).map((s: any) => ({
+    const activeSections = useMemo(() => (subjects || []).map((s: any) => ({
         ...s,
         roomLabel: formatRoomLabel(s.class_level, s.classroom || s.room),
         subjectCode: s.subjects?.subject_code || s.subject_code || "-",
         subjectName: s.subjects?.name || s.subject_name || "-",
-    }));
+        subjectKey: txt(s.subjects?.id) || `${txt(s.subjects?.subject_code)}|${txt(s.subjects?.name)}`
+    })), [subjects]);
+
+    const filterOptions = useMemo(() => {
+        const subjs = Array.from(new Set(activeSections.map(s => s.subjectKey))).map(key => {
+            const match = activeSections.find(s => s.subjectKey === key);
+            return { key, label: `${match?.subjectCode} ${match?.subjectName}` };
+        });
+        const rooms = Array.from(new Set(activeSections.map(s => s.roomLabel))).map(label => ({ key: label, label }));
+        return { subjs, rooms };
+    }, [activeSections]);
+
+    useEffect(() => {
+        const match = activeSections.find(s => s.subjectKey === selectedSubject && s.roomLabel === selectedRoom);
+        setSelectedSection(match?.id || null);
+    }, [selectedSubject, selectedRoom, activeSections]);
+
+    const sectionInfo = useMemo(() => activeSections.find(s => s.id === selectedSection), [selectedSection, activeSections]);
 
     const loadAttendance = async () => {
         if (!selectedSection) return;
@@ -69,21 +98,36 @@ export function AttendanceFeature({ session }: { session: any }) {
                 <div className="absolute top-0 right-0 w-64 h-full bg-white opacity-5 transform -skew-x-12 translate-x-20"></div>
                 <div className="relative z-10">
                     <div className="inline-block bg-white/20 px-3 py-1 rounded-full text-sm font-medium mb-4">Attendance</div>
-                    <h1 className="text-3xl font-bold">เช็คชื่อนักเรียน</h1>
-                    <p className="text-blue-100 mt-2">เช็คชื่อรายห้องและบันทึกสถานะการเข้าเรียน</p>
+                    <h1 className="text-3xl font-bold flex items-center gap-2">
+                        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                        เช็คชื่อนักเรียน
+                    </h1>
+                    {sectionInfo ? (
+                        <div className="mt-2 text-blue-100 text-sm opacity-90 leading-relaxed">
+                            <div>{sectionInfo.subjectCode} {sectionInfo.subjectName}</div>
+                            <div>{sectionInfo.roomLabel} {formatTermLabel(sectionInfo)}</div>
+                        </div>
+                    ) : (
+                        <p className="text-blue-100 mt-2">เช็คชื่อรายห้องและบันทึกสถานะการเข้าเรียน</p>
+                    )}
                 </div>
             </section>
 
             <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 flex flex-wrap gap-4 items-end">
                 <div className="flex-1 min-w-[200px]">
-                    <label className="text-xs text-slate-500 font-medium block mb-1">เลือกวิชา/ห้อง</label>
-                    <select className="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none" value={selectedSection || ""} onChange={e => setSelectedSection(Number(e.target.value))}>
-                        <option value="">-- เลือกวิชา/ห้อง --</option>
-                        {subjectOptions.map((s: any) => (
-                            <option key={s.id} value={s.id}>
-                                {s.subjectCode} - {s.subjectName} ({s.roomLabel})
-                            </option>
-                        ))}
+                    <label className="text-xs text-slate-500 font-medium block mb-1">เลือกวิชา</label>
+                    <select className="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none" value={selectedSubject} onChange={e => setSelectedSubject(e.target.value)}>
+                        <option value="">เลือกวิชา</option>
+                        {filterOptions.subjs.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+                    </select>
+                </div>
+                <div className="flex-1 min-w-[200px]">
+                    <label className="text-xs text-slate-500 font-medium block mb-1">เลือกระดับชั้น</label>
+                    <select className="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none" value={selectedRoom} onChange={e => setSelectedRoom(e.target.value)}>
+                        <option value="">เลือกระดับชั้น</option>
+                        {filterOptions.rooms.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
                     </select>
                 </div>
                 <div>
@@ -120,7 +164,14 @@ export function AttendanceFeature({ session }: { session: any }) {
                             </table>
                             <div className="p-4 border-t border-slate-200 flex justify-between items-center">
                                 <span className="text-sm text-slate-500">นักเรียนทั้งหมด {students.length} คน</span>
-                                <button onClick={handleSave} disabled={saving} className="px-8 py-2.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50">{saving ? "กำลังบันทึก..." : "💾 บันทึกเช็คชื่อ"}</button>
+                                <button onClick={handleSave} disabled={saving} className="px-8 py-2.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2">
+                                    {saving ? (
+                                        <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                                    ) : (
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                                    )}
+                                    {saving ? "กำลังบันทึก..." : "บันทึกเช็คชื่อ"}
+                                </button>
                             </div>
                         </>
                     )}

@@ -10,15 +10,11 @@ function normalizeText(value: any) {
 
 function formatSectionLabel(section: any) {
     const level = section?.class_level || "-";
-    const classroom = section?.classroom || "-";
+    const classroom = section?.classroom?.split('/').pop() || section?.classroom || "-";
     return `ชั้น ${level}/${classroom}`;
 }
 
-function formatTermLabel(section: any) {
-    const year = section?.year || "-";
-    const semester = section?.semester || "-";
-    return `ปี ${year} • ภาค ${semester}`;
-}
+
 
 export function ScoresFeature({ session }: { session: any }) {
     const [subjects, setSubjects] = useState<any[]>([]);
@@ -27,6 +23,9 @@ export function ScoresFeature({ session }: { session: any }) {
     const [search, setSearch] = useState("");
     const [yearFilter, setYearFilter] = useState<string>("all");
     const [semesterFilter, setSemesterFilter] = useState<string>("all");
+    const [levelFilter, setLevelFilter] = useState<string>("all");
+    const [classroomFilter, setClassroomFilter] = useState<string>("all");
+    const [subjectFilter, setSubjectFilter] = useState<string>("all");
 
     useEffect(() => {
         let active = true;
@@ -61,10 +60,28 @@ export function ScoresFeature({ session }: { session: any }) {
         new Set(subjects.map((s) => String(s.semester ?? "")).filter(Boolean))
     ).sort((a, b) => Number(a) - Number(b));
 
+    const levels = Array.from(
+        new Set(subjects.map((s) => String(s.class_level ?? "")).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b));
+
+    const classrooms = Array.from(
+        new Set(subjects.map((s) => String(s.classroom ?? "")).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b));
+
+    const subjectOptions = Array.from(
+        new Set(subjects.map((s) => `${s?.subjects?.subject_code}|${s?.subjects?.name}`))
+    ).sort().map(val => {
+        const [code, name] = val.split("|");
+        return { code, name };
+    });
+
     const filteredSubjects = subjects
         .filter((s) => {
             if (yearFilter !== "all" && String(s.year) !== yearFilter) return false;
             if (semesterFilter !== "all" && String(s.semester) !== semesterFilter) return false;
+            if (levelFilter !== "all" && String(s.class_level) !== levelFilter) return false;
+            if (classroomFilter !== "all" && String(s.classroom) !== classroomFilter) return false;
+            if (subjectFilter !== "all" && s?.subjects?.subject_code !== subjectFilter) return false;
 
             if (!search.trim()) return true;
             const q = normalizeText(search);
@@ -103,56 +120,53 @@ export function ScoresFeature({ session }: { session: any }) {
                     <div className="inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-sm font-medium mb-4">
                         Score Workspace
                     </div>
-                    <h1 className="text-3xl font-bold">ข้อมูลคะแนน</h1>
+                    <h1 className="text-3xl font-bold">ข้อมูลรายวิชา</h1>
                     <p className="mt-2 text-emerald-50">
                         เลือกรายวิชา/Section เพื่อไปยังหน้าบันทึกคะแนน หรือหน้าตัดเกรด
                     </p>
                 </div>
             </section>
 
-            <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <div className="text-sm text-slate-500">Section ที่สอนทั้งหมด</div>
-                    <div className="mt-2 text-3xl font-bold text-slate-800">{subjects.length}</div>
-                    <div className="mt-1 text-xs text-slate-500">ทุกปีการศึกษา / ทุกภาคเรียน</div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <div className="text-sm text-slate-500">รายวิชาไม่ซ้ำ</div>
-                    <div className="mt-2 text-3xl font-bold text-slate-800">{uniqueSubjects}</div>
-                    <div className="mt-1 text-xs text-slate-500">นับจากรหัสวิชา + ชื่อวิชา</div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <div className="text-sm text-slate-500">Section ปีล่าสุด</div>
-                    <div className="mt-2 text-3xl font-bold text-slate-800">{currentYearSections}</div>
-                    <div className="mt-1 text-xs text-slate-500">
-                        {years[0] ? `ปี ${years[0]}` : "ยังไม่มีข้อมูลปีการศึกษา"}
-                    </div>
-                </div>
-            </section>
 
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_auto_auto] gap-4 items-end">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
+                    <div className="md:col-span-2 lg:col-span-1">
+                        <label className="block text-xs font-medium text-slate-500 mb-1">ค้นหา</label>
+                        <div className="relative">
+                            <input
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                placeholder="พิมพ์..."
+                                className="w-full rounded-xl border border-slate-200 pl-9 pr-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-sm"
+                            />
+                            <svg className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+                    </div>
                     <div>
-                        <label className="block text-xs font-medium text-slate-500 mb-1">ค้นหารายวิชา / รหัสวิชา / ห้อง</label>
-                        <input
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            placeholder="เช่น ค32101, คณิตศาสตร์, ม.2/1"
-                            className="w-full rounded-xl border border-slate-200 px-4 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500"
-                        />
+                        <label className="block text-xs font-medium text-slate-500 mb-1">รายวิชา</label>
+                        <select
+                            value={subjectFilter}
+                            onChange={(e) => setSubjectFilter(e.target.value)}
+                            className="w-full rounded-xl border border-slate-200 px-2 py-2 outline-none focus:ring-2 focus:ring-emerald-500 bg-slate-50/50 text-sm"
+                        >
+                            <option value="all">ทั้งหมด</option>
+                            {subjectOptions.map((opt) => (
+                                <option key={opt.code} value={opt.code}>{opt.code} - {opt.name}</option>
+                            ))}
+                        </select>
                     </div>
                     <div>
                         <label className="block text-xs font-medium text-slate-500 mb-1">ปีการศึกษา</label>
                         <select
                             value={yearFilter}
                             onChange={(e) => setYearFilter(e.target.value)}
-                            className="w-full rounded-xl border border-slate-200 px-4 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500"
+                            className="w-full rounded-xl border border-slate-200 px-2 py-2 outline-none focus:ring-2 focus:ring-emerald-500 bg-slate-50/50 text-sm"
                         >
                             <option value="all">ทั้งหมด</option>
                             {years.map((y) => (
-                                <option key={y} value={y}>
-                                    {y}
-                                </option>
+                                <option key={y} value={y}>{y}</option>
                             ))}
                         </select>
                     </div>
@@ -161,29 +175,44 @@ export function ScoresFeature({ session }: { session: any }) {
                         <select
                             value={semesterFilter}
                             onChange={(e) => setSemesterFilter(e.target.value)}
-                            className="w-full rounded-xl border border-slate-200 px-4 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500"
+                            className="w-full rounded-xl border border-slate-200 px-2 py-2 outline-none focus:ring-2 focus:ring-emerald-500 bg-slate-50/50 text-sm"
                         >
                             <option value="all">ทั้งหมด</option>
                             {semesters.map((s) => (
-                                <option key={s} value={s}>
-                                    ภาค {s}
+                                <option key={s} value={s}>{s}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">ระดับชั้น</label>
+                        <select
+                            value={levelFilter}
+                            onChange={(e) => setLevelFilter(e.target.value)}
+                            className="w-full rounded-xl border border-slate-200 px-2 py-2 outline-none focus:ring-2 focus:ring-emerald-500 bg-slate-50/50 text-sm"
+                        >
+                            <option value="all">ทั้งหมด</option>
+                            {levels.map((l) => (
+                                <option key={l} value={l}>
+                                    {l}
                                 </option>
+                            ))}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">ห้อง</label>
+                        <select
+                            value={classroomFilter}
+                            onChange={(e) => setClassroomFilter(e.target.value)}
+                            className="w-full rounded-xl border border-slate-200 px-2 py-2 outline-none focus:ring-2 focus:ring-emerald-500 bg-slate-50/50 text-sm"
+                        >
+                            <option value="all">ทั้งหมด</option>
+                            {classrooms.map((c) => (
+                                <option key={c} value={c}>{c}</option>
                             ))}
                         </select>
                     </div>
                 </div>
 
-                <div className="mt-4 flex flex-wrap gap-2 text-sm">
-                    <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-slate-600">
-                        ใช้หน้านี้เพื่อเลือก Section
-                    </span>
-                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-emerald-700 border border-emerald-200">
-                        บันทึกคะแนน = จัดหัวข้อ + กรอกคะแนน
-                    </span>
-                    <span className="inline-flex items-center rounded-full bg-indigo-50 px-3 py-1 text-indigo-700 border border-indigo-200">
-                        ตัดเกรด = ตั้งเกณฑ์ + คำนวณผลรวม
-                    </span>
-                </div>
             </section>
 
             {error && (
@@ -196,14 +225,17 @@ export function ScoresFeature({ session }: { session: any }) {
                 <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
                     <div>
                         <h2 className="font-bold text-slate-800">รายการรายวิชา / Section</h2>
-                        <p className="text-sm text-slate-500">พบ {filteredSubjects.length} รายการ</p>
+                        <p className="text-sm text-slate-500">จำนวน {filteredSubjects.length} รายการ</p>
                     </div>
-                    {(search || yearFilter !== "all" || semesterFilter !== "all") && (
+                    {(search || yearFilter !== "all" || semesterFilter !== "all" || levelFilter !== "all" || classroomFilter !== "all" || subjectFilter !== "all") && (
                         <button
                             onClick={() => {
                                 setSearch("");
                                 setYearFilter("all");
                                 setSemesterFilter("all");
+                                setLevelFilter("all");
+                                setClassroomFilter("all");
+                                setSubjectFilter("all");
                             }}
                             className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
                         >
@@ -233,15 +265,8 @@ export function ScoresFeature({ session }: { session: any }) {
                                         <h3 className="mt-2 text-lg font-bold text-slate-800">
                                             {s?.subjects?.name || "ไม่ระบุชื่อรายวิชา"}
                                         </h3>
-                                        <p className="mt-1 text-sm text-slate-500">
-                                            {formatSectionLabel(s)} • ห้องเรียน {s?.room || "-"}
-                                        </p>
                                     </div>
-                                    <div className="text-right">
-                                        <div className="rounded-xl bg-white border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700">
-                                            {formatTermLabel(s)}
-                                        </div>
-                                    </div>
+
                                 </div>
 
                                 <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -252,7 +277,7 @@ export function ScoresFeature({ session }: { session: any }) {
                                     <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
                                         <div className="text-xs text-slate-500">ชั้น / ห้อง</div>
                                         <div className="text-sm font-semibold text-slate-700">
-                                            {s.class_level || "-"} / {s.classroom || "-"}
+                                            {s.class_level || "-"} / {s.classroom?.split('/').pop() || s.classroom || "-"}
                                         </div>
                                     </div>
                                     <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">

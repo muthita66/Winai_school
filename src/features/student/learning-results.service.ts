@@ -52,7 +52,7 @@ export const LearningResultsService = {
             .filter((a) => a.name && Number.isFinite(a.score));
     },
 
-    // Subject-level result derived from assessment scores (normalized to 1-5 for current UI)
+    // Subject-level results derived from actual teacher evaluations
     async getSubjectEvaluation(
         student_id: number,
         teaching_assignment_id?: number,
@@ -61,6 +61,13 @@ export const LearningResultsService = {
         subject_id?: number
     ) {
         if (!student_id) return [];
+
+        const student = await prisma.students.findUnique({
+            where: { id: student_id },
+            select: { user_id: true }
+        });
+
+        if (!student) return [];
 
         const enrollmentWhere: any = { student_id };
         if (teaching_assignment_id) {
@@ -81,56 +88,88 @@ export const LearningResultsService = {
         const enrollments = await prisma.enrollments.findMany({
             where: enrollmentWhere,
             include: {
-                student_scores: {
-                    include: {
-                        assessment_items: {
-                            include: { grade_categories: true },
-                        },
-                    },
-                },
                 teaching_assignments: {
                     include: {
                         subjects: true,
                         semesters: { include: { academic_years: true } },
+                        teachers: true
                     },
                 },
             },
         });
 
+        if (enrollments.length === 0) return [];
+
+        const period_id = await resolveEvaluationPeriodId(year, semester);
+
+        // Fetch teaching forms for evaluating students
+        const formIds = (await prisma.evaluation_forms.findMany({
+            where: { type: 'teacher_eval_student' },
+            select: { id: true }
+        })).map(f => f.id);
+
+        if (formIds.length === 0) return [];
+
         const results: any[] = [];
 
-        enrollments.forEach((enrollment) => {
+        // For each enrollment, find the latest evaluation response
+        for (const enrollment of enrollments) {
             const ta = enrollment.teaching_assignments;
             const subject = ta.subjects;
-            const categoryScores = new Map<string, { total: number; max: number }>();
+            const teacher = ta.teachers;
 
-            enrollment.student_scores.forEach((score) => {
-                const catName = score.assessment_items?.grade_categories?.name || 'อื่นๆ';
-                const existing = categoryScores.get(catName) || { total: 0, max: 0 };
-                existing.total += Number(score.score || 0);
-                existing.max += Number(score.assessment_items?.max_score || 0);
-                categoryScores.set(catName, existing);
+            // Raw SQL because user_id (evaluator) might not be strictly checked if we just want evaluations targeting this student
+            // For SUBJECT_STUDENT, target_id is the student ID, and evaluator_user_id is the teacher's user_id
+            let sql = `SELECT id, submitted_at FROM evaluation_responses 
+                       WHERE target_type = 'SUBJECT_STUDENT' 
+                       AND target_id = $1
+                       AND form_id IN (${formIds.join(',')})`;
+            const params: any[] = [student_id];
+
+            if (teacher?.user_id) {
+                sql += ` AND evaluator_user_id = $2`;
+                params.push(teacher.user_id);
+            }
+            if (period_id) {
+                sql += ` AND period_id = $${params.length + 1}`;
+                params.push(Number(period_id));
+            }
+
+            sql += ` ORDER BY submitted_at DESC LIMIT 1`;
+
+            const latestResponseResult = await prisma.$queryRawUnsafe<any[]>(sql, ...params);
+            const latestResponse = latestResponseResult[0];
+
+            if (!latestResponse) continue; // No evaluation for this subject
+
+            const answers = await prisma.evaluation_answers.findMany({
+                where: { response_id: latestResponse.id },
+                include: { evaluation_questions: true }
             });
 
-            categoryScores.forEach((scores, catName) => {
-                const percentage = scores.max > 0 ? Math.round((scores.total / scores.max) * 10000) / 100 : 0;
-                const normalizedScore = Math.max(0, Math.min(5, Math.round((percentage / 20) * 100) / 100));
+            const topics = answers
+                .filter(a => a.score != null)
+                .map(a => ({
+                    name: a.evaluation_questions?.question_text || a.answer_text,
+                    score: Number(a.score)
+                }));
 
-                results.push({
-                    topic: catName,
-                    name: catName,
-                    score: normalizedScore,
-                    subject_code: subject?.subject_code || '',
-                    subject_name: subject?.subject_name || '',
-                    category: catName,
-                    total_score: scores.total,
-                    max_score: scores.max,
-                    percentage,
-                    year: ta.semesters?.academic_years?.year_name || '',
-                    semester: ta.semesters?.semester_number || 0,
-                });
+            const feedback = answers.find(a => a.score == null)?.answer_text || '';
+            const totalScore = topics.reduce((sum, t) => sum + (t.score || 0), 0);
+            const avgScore = topics.length > 0 ? (totalScore / topics.length).toFixed(2) : 0;
+
+            results.push({
+                subject_code: subject?.subject_code || '',
+                subject_name: subject?.subject_name || '',
+                teacher_name: `${teacher?.first_name || ''} ${teacher?.last_name || ''}`.trim(),
+                topics,
+                feedback,
+                average_score: Number(avgScore),
+                submitted_at: latestResponse.submitted_at,
+                year: ta.semesters?.academic_years?.year_name || '',
+                semester: ta.semesters?.semester_number || 0,
             });
-        });
+        }
 
         return results;
     },

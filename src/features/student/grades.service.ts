@@ -32,7 +32,9 @@ export const GradesService = {
             include: {
                 teaching_assignments: {
                     include: {
-                        subjects: true,
+                        subjects: {
+                            include: { subject_categories: true }
+                        },
                         semesters: {
                             include: { academic_years: true }
                         },
@@ -91,12 +93,25 @@ export const GradesService = {
                 grade_point: gradePoint,
                 year: ta.semesters?.academic_years?.year_name || '',
                 semester: ta.semesters?.semester_number || 0,
+                category: subject.subject_categories?.category_name || '',
             });
         });
 
-        return Array.from(uniqueSubjects.values()).sort((a, b) =>
-            a.subject_code.localeCompare(b.subject_code)
-        );
+        function getCategoryRank(cat: string): number {
+            if (!cat) return 99;
+            if (cat.includes('พื้นฐาน')) return 1;
+            if (cat.includes('เพิ่มเติม')) return 2;
+            if (cat.includes('กิจกรรม')) return 3;
+            return 99;
+        }
+
+        return Array.from(uniqueSubjects.values()).sort((a, b) => {
+            const orderA = getCategoryRank(a.category);
+            const orderB = getCategoryRank(b.category);
+
+            if (orderA !== orderB) return orderA - orderB;
+            return a.subject_code.localeCompare(b.subject_code);
+        });
     }
 };
 

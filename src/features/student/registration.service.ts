@@ -76,7 +76,7 @@ export const RegistrationService = {
     },
 
     // Search available teaching assignments (subjects to enroll)
-    async searchSubjects(keyword: string, year?: number, semester?: number) {
+    async searchSubjects(keyword: string, year?: number, semester?: number, classroomId?: number) {
         const where: any = {
             status: 'open',
         };
@@ -86,6 +86,10 @@ export const RegistrationService = {
         if (hasExplicitTerm && !semesterId) return [];
         if (semesterId) {
             where.semester_id = semesterId;
+        }
+
+        if (classroomId) {
+            where.classroom_id = classroomId;
         }
 
         if (keyword) {

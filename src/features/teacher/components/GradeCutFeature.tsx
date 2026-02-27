@@ -68,7 +68,7 @@ function getTermKey(section: SectionLike) {
 }
 
 function formatTermLabel(section: SectionLike) {
-    return `ปี ${getAcademicYearValue(section) || "-"} ภาค ${txt(section?.semester) || "-"}`;
+    return `ปีการศึกษา ${getAcademicYearValue(section) || "-"} ภาคเรียน ${txt(section?.semester) || "-"}`;
 }
 
 const GRADE_ORDER = ["4", "3.5", "3", "2.5", "2", "1.5", "1", "0"] as const;
@@ -100,26 +100,23 @@ function normalizeGrade(grade: any) {
     return GRADE_ALIAS_TO_NUMERIC[raw] || raw || "0";
 }
 
-function ThresholdSlider({ label, gradeLabel, value, onChange, min = 0, max = 100, color }: {
+function ThresholdInput({ label, gradeLabel, value, onChange, min = 0, max = 100, color }: {
     label: string; gradeLabel: string; value: number; onChange: (v: number) => void; min?: number; max?: number; color: string;
 }) {
     return (
-        <div className="flex items-center gap-3">
-            <span className={`inline-flex w-16 items-center justify-center rounded-lg border px-2 py-1 text-xs font-bold ${color}`}>
-                {gradeLabel}
-            </span>
-            <input
-                type="range" min={min} max={max} value={value}
-                onChange={(e) => onChange(Number(e.target.value))}
-                className="flex-1 h-2 rounded-full appearance-none bg-slate-200 accent-indigo-600 cursor-pointer"
-            />
-            <div className="flex items-center gap-1">
+        <div className="flex items-center justify-between py-1 px-3 rounded-xl border border-slate-50 hover:border-indigo-100 transition-colors">
+            <div className="flex items-center gap-3">
+                <span className={`inline-flex min-w-[4rem] items-center justify-center rounded-lg border px-2 py-1 text-xs font-bold ${color}`}>
+                    {gradeLabel}
+                </span>
+                <span className="text-sm font-medium text-slate-500">คะแนนสะสมตั้งแต่</span>
+            </div>
+            <div className="flex items-center gap-2">
                 <input
                     type="number" min={min} max={max} value={value}
                     onChange={(e) => onChange(Number(e.target.value))}
-                    className="w-14 rounded-lg border border-slate-200 px-2 py-1 text-center text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-400"
+                    className="w-16 rounded-xl border border-slate-200 px-2 py-1.5 text-center text-base font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 bg-white"
                 />
-                <span className="text-xs text-slate-400">%</span>
             </div>
         </div>
     );
@@ -281,6 +278,21 @@ export function GradeCutFeature({ session }: { session: any }) {
             .sort((a, b) => Number(b.value) - Number(a.value));
     }, [sections, selectedSubjectKey, selectedRoomKey]);
 
+    const semesterOptions = useMemo(() => {
+        if (!selectedSubjectKey || !selectedRoomKey || !selectedYearKey) return [];
+        const map = new Map<string, string>();
+        sections
+            .filter((s) => getSubjectKey(s) === selectedSubjectKey && getRoomKey(s) === selectedRoomKey && getYearKey(s) === selectedYearKey)
+            .forEach((s) => {
+                const sem = txt(s?.semester);
+                if (!sem) return;
+                if (!map.has(sem)) map.set(sem, `ภาคเรียนที่ ${sem}`);
+            });
+        return Array.from(map.entries())
+            .map(([value, label]) => ({ value, label }))
+            .sort((a, b) => Number(a.value) - Number(b.value));
+    }, [sections, selectedSubjectKey, selectedRoomKey, selectedYearKey]);
+
     const termOptions = useMemo(() => {
         if (!selectedSubjectKey || !selectedRoomKey || !selectedYearKey) return [];
         const map = new Map<string, string>();
@@ -319,9 +331,13 @@ export function GradeCutFeature({ session }: { session: any }) {
     }, [selectedSubjectKey, selectedRoomKey, selectedYearKey, yearOptions]);
 
     useEffect(() => {
-        if (!selectedSubjectKey || !selectedRoomKey || !selectedYearKey || selectedTermKey || termOptions.length === 0) return;
-        setSelectedTermKey(termOptions[0].value);
-    }, [selectedSubjectKey, selectedRoomKey, selectedYearKey, selectedTermKey, termOptions]);
+        if (!selectedSubjectKey || !selectedRoomKey || !selectedYearKey || selectedTermKey || semesterOptions.length === 0) return;
+        const firstSem = semesterOptions[0].value;
+        const matched = sections.find(
+            (s) => getSubjectKey(s) === selectedSubjectKey && getRoomKey(s) === selectedRoomKey && getYearKey(s) === selectedYearKey && txt(s?.semester) === firstSem
+        );
+        if (matched) setSelectedTermKey(getTermKey(matched));
+    }, [selectedSubjectKey, selectedRoomKey, selectedYearKey, selectedTermKey, semesterOptions, sections]);
 
     /* ─── handlers ─── */
     const handleSubjectSelect = (value: string) => {
@@ -340,6 +356,13 @@ export function GradeCutFeature({ session }: { session: any }) {
     const handleYearSelect = (value: string) => {
         setSelectedYearKey(value);
         setSelectedTermKey("");
+    };
+
+    const handleSemesterSelect = (value: string) => {
+        const matched = sections.find(
+            (s) => getSubjectKey(s) === selectedSubjectKey && getRoomKey(s) === selectedRoomKey && getYearKey(s) === selectedYearKey && txt(s?.semester) === value
+        );
+        setSelectedTermKey(matched ? getTermKey(matched) : "");
     };
 
     const handleSaveAndCalculate = async () => {
@@ -366,22 +389,41 @@ export function GradeCutFeature({ session }: { session: any }) {
                 <div className="absolute inset-y-0 right-[-3rem] w-60 bg-white/10 skew-x-[-18deg]" />
                 <div className="relative z-10 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div>
-                        <h1 className="text-2xl font-bold">🎓 ตัดเกรด</h1>
+                        <Link href="/teacher/scores" className="inline-flex items-center gap-1.5 text-indigo-100 hover:text-white mb-2 transition-colors text-sm font-medium">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                            </svg>
+                            กลับหน้าหลัก
+                        </Link>
+                        <h1 className="text-2xl font-bold flex items-center gap-2">
+                            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path d="M12 14l9-5-9-5-9 5 9 5z" />
+                                <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+                            </svg>
+                            ตัดเกรด
+                        </h1>
                         {sectionInfo && (
-                            <p className="mt-1 text-indigo-100 text-sm">
-                                {sectionInfo.subjects?.subject_code} — {sectionInfo.subjects?.name} • ห้อง {formatRoomLabel(sectionInfo)} • {formatTermLabel(sectionInfo)}
-                            </p>
+                            <div className="mt-2 space-y-0.5 text-sm opacity-90">
+                                <div className="font-semibold">{sectionInfo.subjects?.subject_code} {sectionInfo.subjects?.name}</div>
+                                <div className="text-indigo-100/80">
+                                    ชั้น{formatRoomLabel(sectionInfo)}
+                                </div>
+                                <div className="text-indigo-100/70 text-xs">
+                                    {formatTermLabel(sectionInfo)}
+                                </div>
+                            </div>
                         )}
                     </div>
-                    <div className="w-full lg:w-auto lg:min-w-[760px]">
-                        <div className="rounded-2xl border border-white/20 bg-white/10 backdrop-blur p-3">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-[minmax(260px,1.35fr)_minmax(220px,1fr)_minmax(150px,.75fr)_auto] gap-2 items-end">
+                    <div className="w-full lg:flex-1">
+                        <div className="rounded-2xl border border-white/20 bg-white/10 backdrop-blur p-4 flex items-end gap-3">
+                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 flex-1">
                                 <label className="block">
                                     <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-indigo-100/90">วิชา</span>
                                     <select
                                         value={selectedSubjectKey}
                                         onChange={(e) => handleSubjectSelect(e.target.value)}
-                                        className="w-full rounded-xl bg-white/20 border border-white/30 text-white px-4 py-2.5 text-sm outline-none [&>option]:text-slate-800"
+                                        className="w-full rounded-xl bg-white/20 border border-white/30 text-white px-3 py-2 text-sm outline-none [&>option]:text-slate-800"
                                     >
                                         <option value="">เลือกวิชา...</option>
                                         {subjectOptions.map((option) => (
@@ -397,7 +439,7 @@ export function GradeCutFeature({ session }: { session: any }) {
                                         value={selectedRoomKey}
                                         onChange={(e) => handleRoomSelect(e.target.value)}
                                         disabled={!selectedSubjectKey}
-                                        className="w-full rounded-xl bg-white/20 border border-white/30 text-white px-4 py-2.5 text-sm outline-none [&>option]:text-slate-800 disabled:opacity-60 disabled:cursor-not-allowed"
+                                        className="w-full rounded-xl bg-white/20 border border-white/30 text-white px-3 py-2 text-sm outline-none [&>option]:text-slate-800 disabled:opacity-60 disabled:cursor-not-allowed"
                                     >
                                         <option value="">{selectedSubjectKey ? "เลือกห้อง..." : "เลือกวิชาก่อน"}</option>
                                         {roomOptions.map((option) => (
@@ -413,7 +455,7 @@ export function GradeCutFeature({ session }: { session: any }) {
                                         value={selectedYearKey}
                                         onChange={(e) => handleYearSelect(e.target.value)}
                                         disabled={!selectedSubjectKey || !selectedRoomKey}
-                                        className="w-full rounded-xl bg-white/20 border border-white/30 text-white px-4 py-2.5 text-sm outline-none [&>option]:text-slate-800 disabled:opacity-60 disabled:cursor-not-allowed"
+                                        className="w-full rounded-xl bg-white/20 border border-white/30 text-white px-3 py-2 text-sm outline-none [&>option]:text-slate-800 disabled:opacity-60 disabled:cursor-not-allowed"
                                     >
                                         <option value="">{selectedRoomKey ? "เลือกปีการศึกษา..." : "เลือกห้องก่อน"}</option>
                                         {yearOptions.map((option) => (
@@ -423,30 +465,27 @@ export function GradeCutFeature({ session }: { session: any }) {
                                         ))}
                                     </select>
                                 </label>
-                                <div className="flex items-end">
-                                    <Link href={`/teacher/score_input${hasSection ? `?section_id=${sectionId}` : ""}`}
-                                        className="w-full rounded-xl bg-white/20 border border-white/30 px-4 py-2.5 text-sm font-medium text-center hover:bg-white/30 transition-colors whitespace-nowrap">
-                                        ไปหน้าบันทึกคะแนน
-                                    </Link>
-                                </div>
+                                <label className="block">
+                                    <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-indigo-100/90">ภาคเรียน</span>
+                                    <select
+                                        value={selectedTermKey ? txt(sections.find(s => getTermKey(s) === selectedTermKey)?.semester) : ""}
+                                        onChange={(e) => handleSemesterSelect(e.target.value)}
+                                        disabled={!selectedSubjectKey || !selectedRoomKey || !selectedYearKey}
+                                        className="w-full rounded-xl bg-white/20 border border-white/30 text-white px-3 py-2 text-sm outline-none [&>option]:text-slate-800 disabled:opacity-60 disabled:cursor-not-allowed"
+                                    >
+                                        <option value="">{selectedYearKey ? "เลือกภาคเรียน..." : "เลือกปีก่อน"}</option>
+                                        {semesterOptions.map((option) => (
+                                            <option key={option.value} value={option.value}>
+                                                {option.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
                             </div>
-                            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                                <span className={`rounded-full px-2.5 py-1 font-medium border ${selectionReady ? "bg-emerald-500/20 border-emerald-200/40 text-emerald-50" : "bg-white/10 border-white/20 text-indigo-50"}`}>
-                                    {selectionReady ? "พร้อมใช้งาน" : "เลือกวิชา ห้อง และปีการศึกษา"}
-                                </span>
-                                <span className="rounded-full bg-white/10 border border-white/20 px-2.5 py-1 text-indigo-50 max-w-full truncate">
-                                    วิชา {selectedSubjectLabel}
-                                </span>
-                                <span className="rounded-full bg-white/10 border border-white/20 px-2.5 py-1 text-indigo-50">
-                                    ห้อง {selectedRoomLabel}
-                                </span>
-                                <span className="rounded-full bg-white/10 border border-white/20 px-2.5 py-1 text-indigo-50">
-                                    ปีการศึกษา {selectedYearLabel}
-                                </span>
-                                <span className="rounded-full bg-white/10 border border-white/20 px-2.5 py-1 text-indigo-50">
-                                    เทอม {selectedTermLabel}
-                                </span>
-                            </div>
+                            <Link href={`/teacher/score_input${hasSection ? `?section_id=${sectionId}` : ""}`}
+                                className="shrink-0 rounded-xl bg-white/25 border border-white/40 px-3 py-2 text-sm font-bold text-center hover:bg-white/35 transition-colors whitespace-nowrap shadow-sm">
+                                ไปหน้าบันทึกคะแนน
+                            </Link>
                         </div>
                     </div>
                 </div>
@@ -454,7 +493,12 @@ export function GradeCutFeature({ session }: { session: any }) {
 
             {!hasSection ? (
                 <section className="rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm">
-                    <div className="text-5xl mb-4">🎓</div>
+                    <div className="mb-4 flex justify-center">
+                        <svg className="w-16 h-16 text-slate-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path d="M12 14l9-5-9-5-9 5 9 5z" />
+                            <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+                        </svg>
+                    </div>
                     <h2 className="text-xl font-bold text-slate-700">เลือกวิชา ห้อง และปีการศึกษา เพื่อเริ่มตัดเกรด</h2>
                     <p className="mt-2 text-slate-500">ระบบจะเลือกเทอมล่าสุดให้อัตโนมัติภายใต้ปีการศึกษาที่เลือก</p>
                 </section>
@@ -489,17 +533,18 @@ export function GradeCutFeature({ session }: { session: any }) {
                         {/* Threshold sliders */}
                         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                             <div className="flex items-center justify-between mb-4">
-                                <h2 className="font-bold text-slate-700">เกณฑ์ตัดเกรด</h2>
-                                <button onClick={() => setThresholds(DEFAULT_THRESHOLDS)} className="text-xs text-slate-400 hover:text-indigo-600 transition-colors">รีเซ็ต</button>
+                                <h2 className="font-bold text-slate-700">กำหนดเกณฑ์คะแนน (เกรดขั้นต่ำ)</h2>
+                                <button onClick={() => setThresholds(DEFAULT_THRESHOLDS)} className="text-xs text-slate-400 hover:text-indigo-600 transition-colors">Reset</button>
                             </div>
 
                             {!thresholdValid && (
-                                <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-                                    ⚠️ ลำดับเกณฑ์ไม่ถูกต้อง (A ≥ B+ ≥ B ≥ ... ≥ D)
+                                <div className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 flex items-center gap-1.5">
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    ลำดับเกณฑ์ไม่ถูกต้อง (A ≥ B+ ≥ B ≥ ... ≥ D)
                                 </div>
                             )}
 
-                            <div className="space-y-3">
+                            <div className="space-y-1.5">
                                 {([
                                     ["a", "A (4.0)", GRADE_COLORS["4"]],
                                     ["b_plus", "B+ (3.5)", GRADE_COLORS["3.5"]],
@@ -509,7 +554,7 @@ export function GradeCutFeature({ session }: { session: any }) {
                                     ["d_plus", "D+ (1.5)", GRADE_COLORS["1.5"]],
                                     ["d", "D (1.0)", GRADE_COLORS["1"]],
                                 ] as [string, string, string][]).map(([key, label, color]) => (
-                                    <ThresholdSlider
+                                    <ThresholdInput
                                         key={key}
                                         label={key}
                                         gradeLabel={label}
@@ -526,11 +571,14 @@ export function GradeCutFeature({ session }: { session: any }) {
                                     disabled={savingThresholds || calculating || !thresholdValid || headerCount === 0}
                                     className="flex-1 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-40 shadow-sm"
                                 >
-                                    {calculating || savingThresholds ? "กำลังดำเนินการ..." : "💾 บันทึกเกณฑ์ + คำนวณเกรด"}
+                                    {calculating || savingThresholds ? "กำลังดำเนินการ..." : "บันทึกเกณฑ์คะแนนและตัดเกรด"}
                                 </button>
                             </div>
                             {headerCount === 0 && (
-                                <p className="mt-2 text-xs text-amber-600">⚠️ ยังไม่มีหัวข้อคะแนน กรุณาบันทึกคะแนนก่อน</p>
+                                <p className="mt-2 text-xs text-amber-600 flex items-center gap-1">
+                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                    ยังไม่มีหัวข้อคะแนน กรุณาบันทึกคะแนนก่อน
+                                </p>
                             )}
                         </section>
 
@@ -573,13 +621,16 @@ export function GradeCutFeature({ session }: { session: any }) {
                     {/* ── Student Table (always visible) ── */}
                     <section className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
                         <div className="border-b border-slate-200 px-4 py-3 flex flex-wrap items-center justify-between gap-3 bg-slate-50/70">
-                            <h2 className="font-bold text-slate-700 text-sm">รายชื่อนักเรียน + เกรด</h2>
-                            <input
-                                value={studentSearch}
-                                onChange={(e) => setStudentSearch(e.target.value)}
-                                placeholder="🔍 ค้นหานักเรียน..."
-                                className="w-48 rounded-lg border border-slate-200 px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
-                            />
+                            <h2 className="font-bold text-slate-700 text-sm">รายชื่อนักเรียนและเกรด</h2>
+                            <div className="relative">
+                                <svg className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                                <input
+                                    value={studentSearch}
+                                    onChange={(e) => setStudentSearch(e.target.value)}
+                                    placeholder="ค้นหานักเรียน..."
+                                    className="w-48 rounded-lg border border-slate-200 pl-9 pr-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+                                />
+                            </div>
                         </div>
 
                         {summary.length === 0 ? (
@@ -594,7 +645,7 @@ export function GradeCutFeature({ session }: { session: any }) {
                                     <thead>
                                         <tr className="bg-slate-50 border-b border-slate-200">
                                             <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 w-12">#</th>
-                                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500">รหัส</th>
+                                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500">เลขประจำตัวนักเรียน</th>
                                             <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500">ชื่อ-นามสกุล</th>
                                             <th className="px-4 py-2.5 text-center text-xs font-semibold text-slate-500">คะแนนรวม</th>
                                             <th className="px-4 py-2.5 text-center text-xs font-semibold text-slate-500">%</th>

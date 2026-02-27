@@ -56,7 +56,26 @@ export async function GET(request: Request) {
             return successResponse(results, "Competency results retrieved");
         }
 
+        if (action === 'evaluated_sections') {
+            const session = await getSession();
+            const sessionResult = parseStudentIdFromSession(session);
+            if (!sessionResult.ok) return sessionResult.response;
+            const student_id = sessionResult.studentId;
+
+            const yearParsed = parseIntegerParam(searchParams.get('year'), { required: true, min: 1 });
+            if (!yearParsed.ok) return errorResponse("Invalid parameter: year", 400, yearParsed.error);
+            const semesterParsed = parseIntegerParam(searchParams.get('semester'), { required: true, min: 1 });
+            if (!semesterParsed.ok) return errorResponse("Invalid parameter: semester", 400, semesterParsed.error);
+
+            const year = yearParsed.value!;
+            const semester = semesterParsed.value!;
+
+            const sectionIds = await EvaluationService.getEvaluatedSections(student_id, year, semester);
+            return successResponse(sectionIds, "Evaluated sections retrieved");
+        }
+
         return errorResponse("Invalid action parameter", 400);
+
 
     } catch (error: any) {
         return errorResponse("Failed to retrieve evaluation data", 500, error.message);
@@ -94,6 +113,7 @@ export async function POST(request: Request) {
 
         return successResponse(result, "Evaluation submitted successfully");
     } catch (error: any) {
-        return errorResponse("Failed to submit evaluation", 500, error.message);
+        console.error('[POST /api/student/evaluation] Error:', error);
+        return errorResponse(error.message || "Failed to submit evaluation", 500, error.message);
     }
 }

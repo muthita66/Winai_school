@@ -7,10 +7,12 @@ export const StudentApiService = {
     },
 
     // ---- Registration ----
-    async searchSubjects(keyword: string, year?: number, semester?: number) {
+    async searchSubjects(keyword: string, year?: number, semester?: number, class_level?: string, room?: string) {
         let url = `/api/student/registration/search?keyword=${encodeURIComponent(keyword)}`;
         if (year) url += `&year=${year}`;
         if (semester) url += `&semester=${semester}`;
+        if (class_level) url += `&class_level=${encodeURIComponent(class_level)}`;
+        if (room) url += `&room=${encodeURIComponent(room)}`;
         return fetchApi<any[]>(url);
     },
 
@@ -147,6 +149,15 @@ export const StudentApiService = {
         });
         if (section_id) params.append("section_id", section_id.toString());
         return fetchApi<any[]>(`/api/student/evaluation?${params.toString()}`);
+    },
+
+    async getEvaluatedSections(year: number, semester: number) {
+        const params = new URLSearchParams({
+            action: 'evaluated_sections',
+            year: year.toString(),
+            semester: semester.toString()
+        });
+        return fetchApi<number[]>(`/api/student/evaluation?${params.toString()}`);
     },
 
     async submitEvaluation(

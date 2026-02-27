@@ -30,6 +30,12 @@ export async function GET(request: Request) {
             const data = await TeacherScoresService.getScores(header_id);
             return successResponse(data);
         }
+        if (action === 'all_scores') {
+            const section_id = Number(searchParams.get('section_id'));
+            if (!section_id || Number.isNaN(section_id)) return errorResponse('section_id required', 400);
+            const data = await TeacherScoresService.getAllSectionScores(section_id);
+            return successResponse(data);
+        }
 
         return errorResponse('Unknown action', 400);
     } catch (error: any) {

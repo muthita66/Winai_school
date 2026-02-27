@@ -80,9 +80,9 @@ export function StudentsFeature({ session }: { session: any }) {
             <section className="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-3xl p-8 text-white shadow-lg relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-full bg-white opacity-5 transform -skew-x-12 translate-x-20"></div>
                 <div className="relative z-10">
-                    <div className="inline-block bg-white/20 px-3 py-1 rounded-full text-sm font-medium mb-4">Advisory Students</div>
-                    <h1 className="text-3xl font-bold">นักเรียนในที่ปรึกษา</h1>
-                    <p className="text-emerald-100 mt-2">รายชื่อนักเรียนในความดูแล ({students.length} คน)</p>
+                    <div className="inline-block bg-white/20 px-3 py-1 rounded-full text-sm font-medium mb-4">Student List</div>
+                    <h1 className="text-3xl font-bold">รายชื่อนักเรียน</h1>
+                    <p className="text-emerald-100 mt-2">รายชื่อนักเรียนในความดูแล จำนวน {students.length} คน</p>
                 </div>
             </section>
 

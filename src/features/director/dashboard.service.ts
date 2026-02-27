@@ -11,7 +11,7 @@ export const DirectorDashboardService = {
     // Get filter options
     async getFilterOptions() {
         const genders = await prisma.genders.findMany({ orderBy: { id: 'asc' } });
-        const gradeLevels = await prisma.grade_levels.findMany({ orderBy: { id: 'asc' } });
+        const gradeLevels = await prisma.levels.findMany({ orderBy: { id: 'asc' } });
         const classrooms = await prisma.classrooms.findMany({
             include: { grade_levels: true },
             orderBy: [{ grade_level_id: 'asc' }, { room_name: 'asc' }]
@@ -40,8 +40,8 @@ export const DirectorDashboardService = {
 
         return {
             genders: genders.map(g => ({ id: g.id, name: g.name })),
-            class_levels: gradeLevels.map(l => ({ id: l.id, name: l.name })),
-            classLevels: gradeLevels.map(l => l.name),
+            class_levels: gradeLevels.map((l: any) => ({ id: l.id, name: l.name })),
+            classLevels: gradeLevels.map((l: any) => l.name),
             rooms: roomOptions,
             subjects: subjectOptions,
         };
@@ -82,7 +82,7 @@ export const DirectorDashboardService = {
         }
 
         // --- Class Level Distribution ---
-        const gradeLevels = await prisma.grade_levels.findMany({ orderBy: { id: 'asc' } });
+        const gradeLevels = await prisma.levels.findMany({ orderBy: { id: 'asc' } });
         const classDistribution = [];
         for (const gl of gradeLevels) {
             const count = await prisma.students.count({
@@ -190,7 +190,12 @@ export const DirectorDashboardService = {
         ];
 
         // Calculate evaluation average
-        const evalResponses = await prisma.evaluation_responses.count();
+        // Use Raw SQL for count because evaluation_responses is missing user_id column
+        const evalCountResult = await prisma.$queryRawUnsafe<any[]>(
+            `SELECT COUNT(*)::int as count FROM evaluation_responses`
+        );
+        const evalResponses = evalCountResult[0]?.count || 0;
+
         let evalAvg = 0;
         if (evalResponses > 0) {
             const answers = await prisma.evaluation_answers.aggregate({

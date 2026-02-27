@@ -142,7 +142,16 @@ export const ActorsService = {
                 const accessor = prismaAccessors[def.name];
                 if (!accessor) return { ...def, count: 0 };
                 try {
-                    const count = await accessor.count();
+                    let count;
+                    // Special handling for evaluation_responses count due to missing user_id column
+                    if (def.name === 'evaluation_responses') {
+                        const evalCountResult = await prisma.$queryRawUnsafe<any[]>(
+                            `SELECT COUNT(*)::int as count FROM evaluation_responses`
+                        );
+                        count = evalCountResult[0]?.count || 0;
+                    } else {
+                        count = await accessor.count();
+                    }
                     return { ...def, count };
                 } catch {
                     return { ...def, count: 0 };
@@ -160,13 +169,27 @@ export const ActorsService = {
         const accessor = prismaAccessors[name];
         if (!accessor) throw new Error(`No Prisma accessor for "${name}"`);
 
-        const data = await accessor.findMany({ take: 100, orderBy: { id: 'asc' } });
-        return {
-            name: def.name,
-            label: def.label,
-            group: def.group,
-            groupLabel: def.groupLabel,
-            data,
-        };
+        try {
+            // Special handling for evaluation_responses due to missing user_id column
+            if (name === 'evaluation_responses') {
+                const data = await prisma.$queryRawUnsafe<any[]>(
+                    `SELECT id, form_id, evaluator_user_id, submitted_at, period_id, target_type, target_id 
+                     FROM evaluation_responses ORDER BY id ASC LIMIT 100`
+                );
+                return { ...def, data };
+            }
+
+            const data = await accessor.findMany({ take: 100, orderBy: { id: 'asc' } });
+            return {
+                name: def.name,
+                label: def.label,
+                group: def.group,
+                groupLabel: def.groupLabel,
+                data,
+            };
+        } catch (error: any) {
+            console.error(`Error fetching actor data for ${name}:`, error);
+            return { ...def, data: [], error: error.message };
+        }
     },
 };

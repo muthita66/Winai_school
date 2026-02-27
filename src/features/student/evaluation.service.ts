@@ -35,6 +35,7 @@ export const EvaluationService = {
         const forms = await prisma.evaluation_forms.findMany({
             include: {
                 evaluation_questions: { orderBy: { id: 'asc' } },
+                evaluation_form_types: true,
             },
             orderBy: { id: 'asc' },
         });
@@ -44,14 +45,15 @@ export const EvaluationService = {
                 id: q.id,
                 form_id: f.id,
                 type: q.question_type || 'scale',
-                name: q.question_text,
+                name: (q.question_text || '').trim(),
             }))
         );
 
         if (questions.length > 0) {
             const seen = new Set<string>();
             return questions.filter((q) => {
-                const key = `${q.form_id}:${q.name}`;
+                if (!q.name) return false; // ignore empty questions
+                const key = q.name.toLowerCase();
                 if (seen.has(key)) return false;
                 seen.add(key);
                 return true;
@@ -74,32 +76,45 @@ export const EvaluationService = {
         const user_id = await getStudentUserId(student_id);
         if (!user_id) return [];
 
-        const whereClause: any = { user_id };
         const period_id = await resolveEvaluationPeriodId(year, semester);
-        if (period_id) whereClause.period_id = period_id;
 
-        const responses = await prisma.evaluation_responses.findMany({
-            where: whereClause,
-            include: {
-                evaluation_forms: true,
-                evaluation_answers: {
-                    include: { evaluation_questions: true },
-                },
-            },
-            orderBy: { submitted_at: 'desc' },
+        // Raw SQL for evaluation_responses because user_id column is missing
+        // Assuming "Competency Results" are evaluations OF the student
+        const responsesResult = await prisma.$queryRawUnsafe<any[]>(
+            `SELECT * FROM evaluation_responses 
+             WHERE target_type = 'STUDENT' 
+             AND target_id = $1 
+             ${period_id ? `AND period_id = ${period_id}` : ''}
+             ORDER BY submitted_at DESC`,
+            student_id
+        );
+
+        if (responsesResult.length === 0) return [];
+
+        const responseIds = responsesResult.map(r => r.id);
+        const [forms, answers] = await Promise.all([
+            prisma.evaluation_forms.findMany(),
+            prisma.evaluation_answers.findMany({
+                where: { response_id: { in: responseIds } },
+                include: { evaluation_questions: true }
+            })
+        ]);
+
+        return responsesResult.map((r) => {
+            const form = forms.find(f => f.id === r.form_id);
+            const rAnswers = answers.filter(a => a.response_id === r.id);
+            return {
+                id: r.id,
+                form_id: r.form_id,
+                form_name: form?.name || '',
+                submitted_at: r.submitted_at,
+                answers: rAnswers.map((a) => ({
+                    question: a.evaluation_questions?.question_text || a.answer_text || '',
+                    answer: a.answer_text || '',
+                    score: a.score != null ? Number(a.score) : null,
+                })),
+            };
         });
-
-        return responses.map((r) => ({
-            id: r.id,
-            form_id: r.form_id,
-            form_name: r.evaluation_forms?.name || '',
-            submitted_at: r.submitted_at,
-            answers: r.evaluation_answers.map((a) => ({
-                question: a.evaluation_questions?.question_text || a.answer_text || '',
-                answer: a.answer_text || '',
-                score: a.score != null ? Number(a.score) : null,
-            })),
-        }));
     },
 
     // Submit from current frontend payload: [{name, score}] + year/semester/section_id + feedback
@@ -122,13 +137,14 @@ export const EvaluationService = {
         const forms = await prisma.evaluation_forms.findMany({
             include: {
                 evaluation_questions: { select: { id: true, question_text: true } },
+                evaluation_form_types: true,
             },
             orderBy: { id: 'asc' },
         });
         if (forms.length === 0) throw new Error('No evaluation form configured');
 
         const form =
-            forms.find((f) => String(f.type || '').toLowerCase() !== 'advisor') ||
+            forms.find((f) => String(f.evaluation_form_types?.type_code || '').toLowerCase() !== 'advisor') ||
             forms[0];
 
         const questionByText = new Map<string, number>();
@@ -139,14 +155,31 @@ export const EvaluationService = {
 
         const period_id = await resolveEvaluationPeriodId(year, semester);
 
+        // Guard: check if student already submitted for this section (prevent duplicates)
+        if (section_id) {
+            const whereCheck: any = {
+                evaluator_user_id: user_id,
+                target_type: 'ASSIGNMENT',
+                target_id: Number(section_id),
+            };
+            if (period_id) whereCheck.period_id = period_id;
+
+            const existing = await prisma.evaluation_responses.findFirst({ where: whereCheck });
+            if (existing) {
+                throw new Error('นักเรียนได้ประเมินวิชานี้ไปแล้ว');
+            }
+        }
+
         return prisma.$transaction(async (tx) => {
-            const response = await tx.evaluation_responses.create({
-                data: {
-                    form_id: form.id,
-                    user_id,
-                    period_id: period_id ?? null,
-                },
-            });
+            // Raw SQL insert because user_id (the submitter) should be evaluator_user_id 
+            // and the user_id column is missing
+            const result = await tx.$queryRawUnsafe<any[]>(
+                `INSERT INTO evaluation_responses (form_id, evaluator_user_id, period_id, target_type, target_id, submitted_at) 
+                 VALUES ($1, $2, $3, $4, $5, NOW()) 
+                 RETURNING id`,
+                form.id, user_id, period_id ?? null, 'ASSIGNMENT', section_id ? Number(section_id) : null
+            );
+            const responseId = result[0].id;
 
             for (const item of data || []) {
                 const topicName = String(item?.name || '').trim();
@@ -155,7 +188,7 @@ export const EvaluationService = {
 
                 await tx.evaluation_answers.create({
                     data: {
-                        response_id: response.id,
+                        response_id: responseId,
                         question_id,
                         answer_text: question_id ? null : (topicName || null),
                         score: Number.isFinite(score) ? score : null,
@@ -167,7 +200,7 @@ export const EvaluationService = {
             if (feedbackText) {
                 await tx.evaluation_answers.create({
                     data: {
-                        response_id: response.id,
+                        response_id: responseId,
                         question_id: null,
                         answer_text: feedbackText,
                         score: null,
@@ -175,7 +208,34 @@ export const EvaluationService = {
                 });
             }
 
-            return { message: 'บันทึกสำเร็จ', response_id: response.id };
+            return { message: 'บันทึกสำเร็จ', response_id: responseId };
         });
     },
+    // Get IDs of sections already evaluated by the student (in any period)
+    async getEvaluatedSections(student_id: number, year: number, semester: number) {
+        if (!student_id) return [];
+
+        const user_id = await getStudentUserId(student_id);
+        if (!user_id) return [];
+
+        // Try to narrow by period_id if it exists, otherwise return all targets for this user
+        const period_id = await resolveEvaluationPeriodId(year, semester);
+
+        const whereClause: any = {
+            evaluator_user_id: user_id,
+            target_type: 'ASSIGNMENT',
+            target_id: { not: null }
+        };
+        if (period_id) {
+            whereClause.period_id = period_id;
+        }
+
+        const evaluated = await prisma.evaluation_responses.findMany({
+            where: whereClause,
+            select: { target_id: true }
+        });
+
+        return evaluated.map(e => e.target_id).filter((id): id is number => id !== null);
+    },
 };
+

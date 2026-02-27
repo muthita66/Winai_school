@@ -5,9 +5,16 @@ import { z } from 'zod';
 import { parseStudentIdFromSession } from '@/app/api/student/_utils';
 
 const updateHealthSchema = z.object({
-    weight: z.number().optional(),
-    height: z.number().optional(),
-    congenital_disease: z.string().optional(),
+    weight: z.number().nullable().optional(),
+    height: z.number().nullable().optional(),
+    blood_type: z.string().nullable().optional(),
+    allergies: z.string().nullable().optional(),
+    chronic_illness: z.string().nullable().optional(),
+    vaccinations: z.array(z.object({
+        name: z.string(),
+        date: z.string().nullable().optional(),
+        status: z.string().nullable().optional(),
+    })).optional(),
 });
 
 export async function GET(request: Request) {

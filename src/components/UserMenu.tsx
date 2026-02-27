@@ -32,12 +32,6 @@ export default function UserMenu({ session }: { session: any }) {
             </div>
 
             <div className="flex items-center gap-3">
-                <button className="h-10 px-4 rounded-full bg-slate-50 border border-slate-200 hover:bg-slate-100 text-sm font-medium text-slate-700 transition-all shadow-sm flex items-center gap-3">
-                    <div className="w-6 h-6 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center text-[11px] text-white font-bold shadow-inner">
-                        {initial}
-                    </div>
-                    โปรไฟล์
-                </button>
 
                 <button
                     onClick={handleLogout}

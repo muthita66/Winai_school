@@ -12,11 +12,21 @@ export async function GET() {
 
 export async function POST(request: Request) {
     try {
-        const { title, description, event_date } = await request.json();
-        const event = await TeacherCalendarService.add(title, description, event_date);
+        const { title, description, event_date, responsible_teacher_id, location, start_time, end_time } = await request.json();
+        const event = await TeacherCalendarService.add(title, description, event_date, responsible_teacher_id, null, location, start_time, end_time);
         return successResponse(event, 'Event added');
     } catch (error: any) {
         return errorResponse('Failed to add event', 500, error.message);
+    }
+}
+
+export async function PUT(request: Request) {
+    try {
+        const { id, title, description, event_date, responsible_teacher_id, location, start_time, end_time } = await request.json();
+        const event = await TeacherCalendarService.update(id, title, description, event_date, responsible_teacher_id, location, start_time, end_time);
+        return successResponse(event, 'Event updated');
+    } catch (error: any) {
+        return errorResponse('Failed to update event', 500, error.message);
     }
 }
 

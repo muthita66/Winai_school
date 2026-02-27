@@ -158,6 +158,38 @@ export const TeacherScoresService = {
         }));
     },
 
+    // Get all scores for all assessment items in a section
+    async getAllSectionScores(section_id: number) {
+        const categories = await prisma.grade_categories.findMany({
+            where: { teaching_assignment_id: section_id },
+            include: {
+                assessment_items: {
+                    include: {
+                        student_scores: {
+                            include: {
+                                enrollments: { select: { student_id: true } }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        const scoreData: any[] = [];
+        categories.forEach(cat => {
+            cat.assessment_items.forEach(item => {
+                item.student_scores.forEach(s => {
+                    scoreData.push({
+                        header_id: item.id,
+                        student_id: s.enrollments?.student_id || 0,
+                        score: Number(s.score || 0),
+                    });
+                });
+            });
+        });
+        return scoreData;
+    },
+
     // Save scores for an assessment item
     async saveScores(assessment_item_id: number, scores: { enrollment_id?: number; student_id?: number; score: number }[]) {
         const item = await prisma.assessment_items.findUnique({

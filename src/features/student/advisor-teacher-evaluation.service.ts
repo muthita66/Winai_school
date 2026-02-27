@@ -47,7 +47,7 @@ async function resolveEvaluationPeriodId(year?: number, semester?: number) {
 
 async function ensureAdvisorEvaluationForm() {
     const existing = await prisma.evaluation_forms.findFirst({
-        where: { type: "advisor" },
+        where: { evaluation_form_types: { type_code: "advisor" } },
         include: { evaluation_questions: { orderBy: { id: "asc" } } },
         orderBy: { id: "asc" },
     });
@@ -55,7 +55,7 @@ async function ensureAdvisorEvaluationForm() {
 
     return prisma.$transaction(async (tx) => {
         const existingAgain = await tx.evaluation_forms.findFirst({
-            where: { type: "advisor" },
+            where: { evaluation_form_types: { type_code: "advisor" } },
             include: { evaluation_questions: { orderBy: { id: "asc" } } },
             orderBy: { id: "asc" },
         });
@@ -73,7 +73,7 @@ async function ensureAdvisorEvaluationForm() {
             data: {
                 id: formId,
                 name: "ผลประเมินโดยรวม (ครูที่ปรึกษา)",
-                type: "advisor",
+                evaluation_form_types: { connect: { type_code: "advisor" } },
                 evaluation_questions: {
                     create: DEFAULT_ADVISOR_EVAL_TOPICS.map((question_text) => ({
                         id: questionId++,
@@ -93,7 +93,8 @@ async function ensureStudentCanEvaluateAdvisor(student_id: number, teacher_id: n
         where: { id: student_id },
         select: { classroom_id: true },
     });
-    if (!student?.classroom_id) return false;
+    if (!student) return false;
+    if (!student.classroom_id) return false;
 
     const advisor = await prisma.classroom_advisors.findFirst({
         where: {
@@ -137,7 +138,9 @@ async function findLatestAdvisorTeacherResponse(
 export const StudentAdvisorTeacherEvaluationService = {
     async getTemplate(student_id: number, teacher_id: number, year: number, semester: number) {
         const canEvaluate = await ensureStudentCanEvaluateAdvisor(student_id, teacher_id);
-        if (!canEvaluate) throw new Error("ไม่พบครูที่ปรึกษา");
+        if (!canEvaluate) {
+            throw new Error(`ไม่สามารถประเมินได้: นักเรียนและครูที่เลือกไม่ได้อยู่ในห้องเดียวกัน หรือไม่พบข้อมูลครูที่ปรึกษา (Advisor not found for teacher_id: ${teacher_id})`);
+        }
 
         const [studentUserId, teacherUserId, form, periodId] = await Promise.all([
             getStudentUserId(student_id),

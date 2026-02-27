@@ -13,11 +13,15 @@ export async function GET(request: Request) {
         const year = yearParsed.value;
         const semester = semesterParsed.value;
 
+        const class_level = searchParams.get('class_level') || undefined;
+        const room = searchParams.get('room') || undefined;
+        const classroomId = await RegistrationService.resolveClassroomId(class_level, room);
+
         if (!keyword) {
             return successResponse([], "No keyword provided");
         }
 
-        const data = await RegistrationService.searchSubjects(keyword, year, semester);
+        const data = await RegistrationService.searchSubjects(keyword, year, semester, Number.isFinite(classroomId as number) ? classroomId : undefined);
         return successResponse(data, "Subjects retrieved");
     } catch (error: any) {
         return errorResponse("Failed to search", 500, error.message);

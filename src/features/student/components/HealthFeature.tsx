@@ -40,7 +40,6 @@ export function HealthFeature({ session }: HealthFeatureProps) {
     const [formData, setFormData] = useState({
         weight: "",
         height: "",
-        blood_pressure: "",
         blood_type: "",
         allergies: "",
         chronic_illness: "",
@@ -52,7 +51,6 @@ export function HealthFeature({ session }: HealthFeatureProps) {
             setFormData({
                 weight: healthQuery.data.weight?.toString() || "",
                 height: healthQuery.data.height?.toString() || "",
-                blood_pressure: healthQuery.data.blood_pressure || "",
                 blood_type: healthQuery.data.blood_type || "",
                 allergies: healthQuery.data.allergies || "",
                 chronic_illness: healthQuery.data.chronic_illness || "",
@@ -212,7 +210,7 @@ export function HealthFeature({ session }: HealthFeatureProps) {
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-2">น้ำหนัก (กก.)</label>
                                 <input
@@ -231,17 +229,6 @@ export function HealthFeature({ session }: HealthFeatureProps) {
                                     name="height"
                                     step="0.1"
                                     value={formData.height}
-                                    onChange={handleInputChange}
-                                    className="w-full border border-slate-300 rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">ความดันโลหิต</label>
-                                <input
-                                    type="text"
-                                    name="blood_pressure"
-                                    placeholder="เช่น 120/80"
-                                    value={formData.blood_pressure}
                                     onChange={handleInputChange}
                                     className="w-full border border-slate-300 rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
                                 />
@@ -362,7 +349,7 @@ export function HealthFeature({ session }: HealthFeatureProps) {
                             <h3 className="text-lg font-bold text-slate-800">สรุปสุขภาพวันนี้</h3>
                         </div>
 
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                             <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
                                 <div className="text-slate-500 text-sm font-medium mb-1">BMI</div>
                                 <div className="text-3xl font-bold text-slate-800">{bmi > 0 ? bmi.toFixed(1) : "-"}</div>
@@ -378,10 +365,6 @@ export function HealthFeature({ session }: HealthFeatureProps) {
                             <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
                                 <div className="text-slate-500 text-sm font-medium mb-1">ส่วนสูง (ซม.)</div>
                                 <div className="text-3xl font-bold text-slate-800">{healthData?.height || "-"}</div>
-                            </div>
-                            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 col-span-2 md:col-span-1">
-                                <div className="text-slate-500 text-sm font-medium mb-1">ความดันโลหิต</div>
-                                <div className="text-3xl font-bold text-slate-800">{healthData?.blood_pressure || "-"}</div>
                             </div>
                         </div>
                     </section>

@@ -8,12 +8,20 @@ export const TeacherApiService = {
         return fetchApi<any>(`/api/teacher/dashboard?${params.toString()}`);
     },
 
-    // --- Calendar ---
+    // --- Teaching Schedule ---
+    async getTeachingSchedule(teacher_id: number) {
+        return fetchApi<any[]>(`/api/teacher/teaching-schedule?teacher_id=${teacher_id}`);
+    },
+
+    // --- Activity Calendar ---
     async getCalendarEvents() {
         return fetchApi<any[]>('/api/teacher/calendar');
     },
-    async addCalendarEvent(data: { title: string; description: string; event_date: string }) {
+    async addCalendarEvent(data: { title: string; description: string; event_date: string; responsible_teacher_id?: number | null; location?: string | null; start_time?: string | null; end_time?: string | null }) {
         return fetchApi<any>('/api/teacher/calendar', { method: 'POST', body: JSON.stringify(data) });
+    },
+    async updateCalendarEvent(id: number, data: { title: string; description: string; event_date: string; responsible_teacher_id?: number | null; location?: string | null; start_time?: string | null; end_time?: string | null }) {
+        return fetchApi<any>('/api/teacher/calendar', { method: 'PUT', body: JSON.stringify({ id, ...data }) });
     },
     async deleteCalendarEvent(id: number) {
         return fetchApi<any>(`/api/teacher/calendar?action=delete&id=${id}`, { method: 'DELETE' });
@@ -92,6 +100,9 @@ export const TeacherApiService = {
     async getScores(header_id: number) {
         return fetchApi<any[]>(`/api/teacher/scores?action=scores&header_id=${header_id}`);
     },
+    async getSectionScores(section_id: number) {
+        return fetchApi<any[]>(`/api/teacher/scores?action=all_scores&section_id=${section_id}`);
+    },
     async addScoreHeader(section_id: number, header_name: string, max_score: number) {
         return fetchApi<any>('/api/teacher/scores', {
             method: 'POST',
@@ -135,6 +146,9 @@ export const TeacherApiService = {
     },
 
     // --- Fitness ---
+    async getAcademicYears() {
+        return fetchApi<any[]>('/api/teacher/fitness?action=years');
+    },
     async getFitnessStudents(teacher_id: number, class_level: string, room: string) {
         return fetchApi<any[]>(`/api/teacher/fitness?action=students&teacher_id=${teacher_id}&class_level=${class_level}&room=${room}`);
     },
@@ -165,6 +179,49 @@ export const TeacherApiService = {
         return fetchApi<any[]>(`/api/teacher/teaching-evaluation?${params.toString()}`);
     },
 
+    async getTeachingEvaluationDetailed(teacher_id: number, section_id?: number, year?: number, semester?: number) {
+        const params = new URLSearchParams({ action: 'results' });
+        params.append("teacher_id", teacher_id.toString());
+        if (section_id) params.append("section_id", section_id.toString());
+        if (year) params.append("year", year.toString());
+        if (semester) params.append("semester", semester.toString());
+        return fetchApi<any>(`/api/teacher/teaching-evaluation?${params.toString()}`);
+    },
+
+    async getSectionStudentsForEvaluation(teacher_id: number, section_id: number, year: number, semester: number) {
+        const params = new URLSearchParams({ action: 'students' });
+        params.append("teacher_id", teacher_id.toString());
+        params.append("section_id", section_id.toString());
+        params.append("year", year.toString());
+        params.append("semester", semester.toString());
+        return fetchApi<any[]>(`/api/teacher/teaching-evaluation?${params.toString()}`);
+    },
+
+    async getSubjectEvaluationTemplate(teacher_id: number, student_id: number, section_id: number, year: number, semester: number) {
+        const params = new URLSearchParams({ action: 'template' });
+        params.append("teacher_id", teacher_id.toString());
+        params.append("student_id", student_id.toString());
+        params.append("section_id", section_id.toString());
+        params.append("year", year.toString());
+        params.append("semester", semester.toString());
+        return fetchApi<any>(`/api/teacher/teaching-evaluation?${params.toString()}`);
+    },
+
+    async submitSubjectEvaluation(data: {
+        teacher_id: number;
+        student_id: number;
+        section_id: number;
+        year: number;
+        semester: number;
+        data: { name: string; score: number }[];
+        feedback?: string;
+    }) {
+        return fetchApi<any>('/api/teacher/teaching-evaluation', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    },
+
     // --- Advisor Evaluation ---
     async getAdvisorEvaluation(teacher_id: number, year?: number, semester?: number) {
         const params = new URLSearchParams();
@@ -180,5 +237,8 @@ export const TeacherApiService = {
         if (year) params.set('year', String(year));
         if (semester) params.set('semester', String(semester));
         return fetchApi<any[]>(`/api/teacher/advisor-evaluation?${params.toString()}`);
+    },
+    async getAllTeachers() {
+        return fetchApi<any[]>('/api/teacher/teachers');
     },
 };

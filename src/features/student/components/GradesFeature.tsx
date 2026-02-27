@@ -245,32 +245,6 @@ export function GradesFeature({ session }: GradesFeatureProps) {
                 <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-teal-500 rounded-full blur-2xl opacity-50 print:hidden"></div>
             </section>
 
-            {/* GPA Summary Grid */}
-            <section className="print:mt-6">
-                <div className="flex items-center gap-3 mb-6 print:hidden">
-                    <h3 className="text-lg font-bold text-slate-800">สรุปเกรด</h3>
-                    <span className="px-2 py-1 bg-slate-100 text-slate-600 text-xs font-medium rounded-md">ภาพรวม</span>
-                </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="bg-white rounded-2xl p-5 shadow-sm border-t-4 border-indigo-500 print:shadow-none print:border print:border-gray-300">
-                        <div className="text-slate-500 text-sm font-medium mb-1">หน่วยกิตเทอมนี้</div>
-                        <div className="text-3xl font-bold text-slate-800">{termCredit.toFixed(1)}</div>
-                    </div>
-                    <div className="bg-white rounded-2xl p-5 shadow-sm border-t-4 border-purple-500 print:shadow-none print:border print:border-gray-300">
-                        <div className="text-slate-500 text-sm font-medium mb-1">หน่วยกิตสะสม</div>
-                        <div className="text-3xl font-bold text-slate-800">{totalCreditsAll.toFixed(1)}</div>
-                    </div>
-                    <div className="bg-white rounded-2xl p-5 shadow-sm border-t-4 border-emerald-500 print:shadow-none print:border print:border-gray-300">
-                        <div className="text-slate-500 text-sm font-medium mb-1">เกรดเฉลี่ย (GPA)</div>
-                        <div className="text-3xl font-bold text-slate-800">{gpa.toFixed(2)}</div>
-                    </div>
-                    <div className="bg-white rounded-2xl p-5 shadow-sm border-t-4 border-amber-500 print:shadow-none print:border print:border-gray-300">
-                        <div className="text-slate-500 text-sm font-medium mb-1">สะสม (GPAX)</div>
-                        <div className="text-3xl font-bold text-slate-800">{totalGpa.toFixed(2)}</div>
-                    </div>
-                </div>
-            </section>
 
             {/* Grades Table */}
             <section className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 print:shadow-none print:border-none print:p-0 print:mt-6">
@@ -347,6 +321,33 @@ export function GradesFeature({ session }: GradesFeatureProps) {
                     <div className="hidden print:grid grid-cols-2 mt-8 text-sm gap-8">
                         <div className="border-t border-black pt-2 text-center mt-12">ลงชื่อ................................................<br />(ครูประจำชั้น)</div>
                         <div className="border-t border-black pt-2 text-center mt-12">ลงชื่อ................................................<br />(ผู้ปกครอง)</div>
+                    </div>
+                </div>
+            </section>
+
+            {/* GPA Summary Grid */}
+            <section className="mt-6 print:mt-6">
+                <div className="flex flex-col gap-1.5 mb-6 print:hidden">
+                    <h3 className="text-lg font-bold text-slate-800">สรุปผลการศึกษา</h3>
+                    <span className="w-fit px-2 py-1 bg-slate-100 text-slate-600 text-xs font-medium rounded-md">ภาพรวม</span>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-white rounded-2xl p-5 shadow-sm border-t-4 border-indigo-500 print:shadow-none print:border print:border-gray-300">
+                        <div className="text-slate-500 text-sm font-medium mb-1">หน่วยกิตเทอมนี้</div>
+                        <div className="text-3xl font-bold text-slate-800">{termCredit.toFixed(1)}</div>
+                    </div>
+                    <div className="bg-white rounded-2xl p-5 shadow-sm border-t-4 border-purple-500 print:shadow-none print:border print:border-gray-300">
+                        <div className="text-slate-500 text-sm font-medium mb-1">หน่วยกิตสะสม</div>
+                        <div className="text-3xl font-bold text-slate-800">{totalCreditsAll.toFixed(1)}</div>
+                    </div>
+                    <div className="bg-white rounded-2xl p-5 shadow-sm border-t-4 border-emerald-500 print:shadow-none print:border print:border-gray-300">
+                        <div className="text-slate-500 text-sm font-medium mb-1">เกรดเฉลี่ย (GPA)</div>
+                        <div className="text-3xl font-bold text-slate-800">{gpa.toFixed(2)}</div>
+                    </div>
+                    <div className="bg-white rounded-2xl p-5 shadow-sm border-t-4 border-amber-500 print:shadow-none print:border print:border-gray-300">
+                        <div className="text-slate-500 text-sm font-medium mb-1">สะสม (GPAX)</div>
+                        <div className="text-3xl font-bold text-slate-800">{totalGpa.toFixed(2)}</div>
                     </div>
                 </div>
             </section>

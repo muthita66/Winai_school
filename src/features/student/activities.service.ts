@@ -12,8 +12,9 @@ export const ActivitiesService = {
 
         return events.map(e => ({
             id: e.id,
-            title: e.title,
+            name: e.title, // Map title to name
             description: e.description || '',
+            date: e.start_datetime ? e.start_datetime.toISOString().split('T')[0] : null, // Map start_datetime to date
             start_date: e.start_datetime,
             end_date: e.end_datetime,
             is_all_day: e.is_all_day || false,

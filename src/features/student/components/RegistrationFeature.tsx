@@ -162,7 +162,9 @@ export function RegistrationFeature({ session }: { session: UserSession }) {
         if (!searchKeyword.trim()) return;
         setIsSearching(true);
         try {
-            const results = await StudentApiService.searchSubjects(searchKeyword, year, semester);
+            const class_level = session.class_level ? String(session.class_level) : '';
+            const room = session.room ? String(session.room) : '';
+            const results = await StudentApiService.searchSubjects(searchKeyword, year, semester, class_level, room);
             setSearchResults(results);
             setIsModalOpen(true);
         } catch (error) {
@@ -268,7 +270,12 @@ export function RegistrationFeature({ session }: { session: UserSession }) {
             {/* Selection Section */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                 <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
-                    <span className="bg-slate-100 p-2 rounded-lg mr-2">⚙️</span>
+                    <span className="bg-slate-100 p-2 rounded-lg mr-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-slate-500">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.592c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </span>
                     เลือกปีการศึกษาและภาคเรียน
                 </h3>
                 <div className="flex space-x-4 items-end">
@@ -307,7 +314,11 @@ export function RegistrationFeature({ session }: { session: UserSession }) {
             {/* Search Section */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                 <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
-                    <span className="bg-slate-100 p-2 rounded-lg mr-2">🔍</span>
+                    <span className="bg-slate-100 p-2 rounded-lg mr-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-slate-500">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                        </svg>
+                    </span>
                     ค้นหารายวิชาที่เปิดสอน
                 </h3>
                 <div className="flex space-x-2">
@@ -385,80 +396,87 @@ export function RegistrationFeature({ session }: { session: UserSession }) {
                                             );
 
                                         return (
-                                        <div key={idx} className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white p-5 border border-slate-200 rounded-2xl shadow-sm hover:border-emerald-200 transition-colors">
-                                            <div className="mb-4 sm:mb-0">
-                                                <div className="font-semibold text-slate-800 text-lg flex items-center gap-2">
-                                                    <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-sm font-mono">{subj.subject_code}</span>
-                                                    {subj.subject_name || subj.name}
-                                                </div>
-                                                <div className="text-sm text-slate-600 mt-2 flex flex-wrap gap-x-4 gap-y-2">
-                                                    <span className="flex items-center gap-1">
-                                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                                                        หน่วยกิต: <span className="font-medium text-slate-800">{subj.credit}</span>
-                                                    </span>
-                                                    {subj.teacher_name && (
+                                            <div key={idx} className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white p-5 border border-slate-200 rounded-2xl shadow-sm hover:border-emerald-200 transition-colors">
+                                                <div className="mb-4 sm:mb-0">
+                                                    <div className="font-semibold text-slate-800 text-lg flex items-center gap-2">
+                                                        <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-sm font-mono">{subj.subject_code}</span>
+                                                        {subj.subject_name || subj.name}
+                                                    </div>
+                                                    <div className="text-sm text-slate-600 mt-2 flex flex-wrap gap-x-4 gap-y-2">
                                                         <span className="flex items-center gap-1">
-                                                            <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
-                                                            <span className="mr-1">🧑‍🏫</span> {subj.teacher_name}
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                                            หน่วยกิต: <span className="font-medium text-slate-800">{subj.credit}</span>
                                                         </span>
-                                                    )}
-                                                </div>
-                                                <div className="mt-3 flex flex-wrap gap-2">
-                                                    {subj.schedules && subj.schedules.length > 0 ? (
-                                                        subj.schedules.map((sch: any, sIdx: number) => (
-                                                            <span key={sIdx} className="bg-emerald-50 text-emerald-700 text-xs font-medium px-3 py-1 rounded-full border border-emerald-100">
-                                                                📅 {sch.day_of_week} ⏰ {sch.time_range}
+                                                        {subj.teacher_name && (
+                                                            <span className="flex items-center gap-1">
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+                                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-blue-500">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.26 10.147L12 14.63l7.74-4.483m-15.48 0L12 5.63l7.74 4.517m-15.48 0L12 14.63m-7.74-4.483L12 5.63m7.74 4.517L12 14.63m7.74-4.483L12 14.63m0 0v7.5" />
+                                                                </svg>
+                                                                {subj.teacher_name}
                                                             </span>
-                                                        ))
+                                                        )}
+                                                    </div>
+                                                    <div className="mt-3 flex flex-wrap gap-2">
+                                                        {subj.schedules && subj.schedules.length > 0 ? (
+                                                            subj.schedules.map((sch: any, sIdx: number) => (
+                                                                <span key={sIdx} className="inline-flex items-center bg-emerald-50 text-emerald-700 text-xs font-medium px-3 py-1.5 rounded-xl border border-emerald-100 shadow-sm leading-none min-h-[32px]">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-1.5 text-emerald-600 shrink-0">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5a2.25 2.25 0 012.25 2.25v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5m-18 0h18" />
+                                                                    </svg>
+                                                                    <span className="mr-2">{sch.day_of_week}</span>
+                                                                    <span className="w-px h-3 bg-emerald-200 mr-2"></span>
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-1.5 text-emerald-600 shrink-0">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                    </svg>
+                                                                    <span>{sch.time_range}</span>
+                                                                </span>
+                                                            ))
+                                                        ) : (
+                                                            <span className="text-xs text-slate-400 bg-slate-100 px-3 py-1 rounded-full border border-slate-200">ยังไม่กำหนดเวลา</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className="w-full sm:w-auto mt-2 sm:mt-0">
+                                                    {isRegistered ? (
+                                                        <div className="w-full sm:w-auto text-center text-sm font-medium text-emerald-700 bg-emerald-50 px-6 py-3 rounded-xl border border-emerald-200 cursor-not-allowed">
+                                                            ลงทะเบียนแล้ว
+                                                        </div>
+                                                    ) : isInCart ? (
+                                                        <div className="w-full sm:w-auto text-center text-sm font-medium text-amber-700 bg-amber-50 px-6 py-3 rounded-xl border border-amber-200 cursor-not-allowed">
+                                                            อยู่ในตะกร้าแล้ว
+                                                        </div>
+                                                    ) : ((subj.schedules && subj.schedules.length > 0) ? (
+                                                        <button
+                                                            onClick={() => handleSelectSubject(subj.schedules[0].section_id || subj.section_id)}
+                                                            disabled={isActionLoading}
+                                                            className="w-full sm:w-auto text-white bg-emerald-600 hover:bg-emerald-700 focus:ring-4 focus:ring-emerald-300 font-medium rounded-xl text-sm px-6 py-3 shadow-sm hover:shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        >
+                                                            {isActionLoading ? 'กำลังจัดเก็บ...' : '+ เลือกลงตะกร้า'}
+                                                        </button>
                                                     ) : (
-                                                        <span className="text-xs text-slate-400 bg-slate-100 px-3 py-1 rounded-full border border-slate-200">ยังไม่กำหนดเวลา</span>
-                                                    )}
+                                                        <div className="w-full sm:w-auto text-center text-sm text-slate-500 bg-slate-100 px-6 py-3 rounded-xl border border-dashed border-slate-300 cursor-not-allowed">
+                                                            ลงทะเบียนไม่ได้
+                                                        </div>
+                                                    ))}
                                                 </div>
                                             </div>
-                                            <div className="w-full sm:w-auto mt-2 sm:mt-0">
-                                                {isRegistered ? (
-                                                    <div className="w-full sm:w-auto text-center text-sm font-medium text-emerald-700 bg-emerald-50 px-6 py-3 rounded-xl border border-emerald-200 cursor-not-allowed">
-                                                        ลงทะเบียนแล้ว
-                                                    </div>
-                                                ) : isInCart ? (
-                                                    <div className="w-full sm:w-auto text-center text-sm font-medium text-amber-700 bg-amber-50 px-6 py-3 rounded-xl border border-amber-200 cursor-not-allowed">
-                                                        อยู่ในตะกร้าแล้ว
-                                                    </div>
-                                                ) : ((subj.schedules && subj.schedules.length > 0) ? (
-                                                    <button
-                                                        onClick={() => handleSelectSubject(subj.schedules[0].section_id || subj.section_id)}
-                                                        disabled={isActionLoading}
-                                                        className="w-full sm:w-auto text-white bg-emerald-600 hover:bg-emerald-700 focus:ring-4 focus:ring-emerald-300 font-medium rounded-xl text-sm px-6 py-3 shadow-sm hover:shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                    >
-                                                        {isActionLoading ? 'กำลังจัดเก็บ...' : '+ เลือกลงตะกร้า'}
-                                                    </button>
-                                                ) : (
-                                                    <div className="w-full sm:w-auto text-center text-sm text-slate-500 bg-slate-100 px-6 py-3 rounded-xl border border-dashed border-slate-300 cursor-not-allowed">
-                                                        ลงทะเบียนไม่ได้
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )})}
+                                        )
+                                    })}
                                 </div>
                             ) : (
                                 <div className="text-center py-16">
-                                    <div className="text-6xl mb-4">🔍</div>
+                                    <div className="text-6xl mb-4 flex justify-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor" className="w-16 h-16 text-slate-300">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                                        </svg>
+                                    </div>
                                     <h3 className="text-lg font-semibold text-slate-800">ไม่พบรายวิชา</h3>
                                     <p className="text-slate-500 mt-2">อาจจะไม่มีวิชาเปิดสอนในช่วงเวลานี้ หรือลองเปลี่ยนคำค้นหาใหม่</p>
                                 </div>
                             )}
                         </div>
 
-                        {/* Modal Footer */}
-                        <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
-                            <button
-                                onClick={() => setIsModalOpen(false)}
-                                className="text-slate-600 bg-white hover:bg-slate-100 focus:ring-4 focus:ring-slate-200 font-medium rounded-xl text-sm px-6 py-2.5 border border-slate-200 transition-colors"
-                            >
-                                ปิดหน้าต่าง
-                            </button>
-                        </div>
                     </div>
                 </div>
             )}
@@ -467,7 +485,11 @@ export function RegistrationFeature({ session }: { session: UserSession }) {
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                 <div className="flex justify-between items-center mb-4">
                     <h3 className="text-lg font-semibold text-slate-800 flex items-center">
-                        <span className="bg-slate-100 p-2 rounded-lg mr-2">🛒</span>
+                        <span className="bg-slate-100 p-2 rounded-lg mr-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-slate-500">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
+                            </svg>
+                        </span>
                         รายวิชาที่เลือกไว้ (ตะกร้า)
                     </h3>
                     <button
@@ -475,7 +497,14 @@ export function RegistrationFeature({ session }: { session: UserSession }) {
                         disabled={isActionLoading || cartItems.length === 0}
                         className="text-white bg-emerald-600 hover:bg-emerald-700 focus:ring-4 focus:ring-emerald-300 font-medium rounded-lg text-sm px-5 py-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {isActionLoading ? 'กำลังบันทึก...' : '💾 บันทึกรายวิชาที่เลือก'}
+                        {isActionLoading ? 'กำลังบันทึก...' : (
+                            <span className="flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-2">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                บันทึกรายวิชาที่เลือก
+                            </span>
+                        )}
                     </button>
                 </div>
 
@@ -511,7 +540,9 @@ export function RegistrationFeature({ session }: { session: UserSession }) {
                                             disabled={isActionLoading}
                                             className="text-red-500 bg-red-50 hover:bg-red-100 p-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
-                                            🗑️
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                            </svg>
                                         </button>
                                     </td>
                                 </tr>
@@ -524,7 +555,11 @@ export function RegistrationFeature({ session }: { session: UserSession }) {
             {/* Registered Section */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                 <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
-                    <span className="bg-slate-100 p-2 rounded-lg mr-2">✅</span>
+                    <span className="bg-slate-100 p-2 rounded-lg mr-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-slate-500">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </span>
                     รายวิชาที่บันทึกแล้ว
                 </h3>
 
@@ -561,7 +596,9 @@ export function RegistrationFeature({ session }: { session: UserSession }) {
                                             className="text-red-500 bg-red-50 hover:bg-red-100 p-2 rounded-lg text-xs disabled:opacity-50 disabled:cursor-not-allowed"
                                             title="ทดสอบลบ"
                                         >
-                                            ❌
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
                                         </button>
                                     </td>
                                 </tr>

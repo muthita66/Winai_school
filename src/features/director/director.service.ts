@@ -244,8 +244,12 @@ export const DirectorService = {
         });
 
         // Then create teacher linked to user
+        const lastTeacher = await prisma.teachers.findFirst({ orderBy: { id: 'desc' } });
+        const newId = (lastTeacher?.id || 0) + 1;
+
         return prisma.teachers.create({
             data: {
+                id: newId,
                 user_id: user.id,
                 teacher_code: data.teacher_code,
                 first_name: data.first_name,
@@ -342,8 +346,12 @@ export const DirectorService = {
             }
         });
 
+        const lastStudent = await prisma.students.findFirst({ orderBy: { id: 'desc' } });
+        const newStudentId = (lastStudent?.id || 0) + 1;
+
         return prisma.students.create({
             data: {
+                id: newStudentId,
                 user_id: user.id,
                 student_code: data.student_code,
                 first_name: data.first_name,
@@ -452,8 +460,12 @@ export const DirectorService = {
     },
 
     async createSubject(data: any) {
+        const lastSubject = await prisma.subjects.findFirst({ orderBy: { id: 'desc' } });
+        const newSubjectId = (lastSubject?.id || 0) + 1;
+
         return prisma.subjects.create({
             data: {
+                id: newSubjectId,
                 subject_code: data.subject_code,
                 subject_name: data.subject_name,
                 credit: data.credit || 1.0,

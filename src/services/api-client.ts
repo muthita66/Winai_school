@@ -16,7 +16,9 @@ export async function fetchApi<T>(url: string, options?: RequestInit): Promise<T
     const data = await response.json();
 
     if (!response.ok || !data.success) {
-        throw new Error(data.message || data.error || `HTTP error! status: ${response.status}`);
+        const errorMsg = data.message || data.error || `HTTP error! status: ${response.status}`;
+        const detailedError = data.errors ? JSON.stringify(data.errors) : '';
+        throw new Error(detailedError ? `${errorMsg} (${detailedError})` : errorMsg);
     }
 
     return data.data as T;
