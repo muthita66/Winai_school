@@ -81,9 +81,9 @@ async function ensureAdvisorEvaluationForm() {
                         question_type: "rating",
                     })),
                 },
-            },
+            } as any,
             include: { evaluation_questions: { orderBy: { id: "asc" } } },
-        });
+        }) as any;
     });
 }
 
@@ -151,10 +151,10 @@ export const StudentAdvisorTeacherEvaluationService = {
 
         if (!studentUserId) throw new Error("ไม่พบบัญชีนักเรียน");
 
-        const topics = (form?.evaluation_questions?.length
-            ? form.evaluation_questions.map((q) => ({ id: q.id, name: q.question_text || "" }))
+        const topics = ((form as any)?.evaluation_questions?.length
+            ? (form as any).evaluation_questions.map((q: any) => ({ id: q.id, name: q.question_text || "" }))
             : DEFAULT_ADVISOR_EVAL_TOPICS.map((name, index) => ({ id: index + 1, name })))
-            .filter((t) => t.name);
+            .filter((t: any) => t.name);
 
         const latest = await findLatestAdvisorTeacherResponse(
             Number(form.id),
@@ -210,7 +210,7 @@ export const StudentAdvisorTeacherEvaluationService = {
         if (!studentUserId) throw new Error("ไม่พบบัญชีนักเรียน");
 
         const questionByText = new Map<string, number>();
-        (form.evaluation_questions || []).forEach((q) => {
+        ((form as any).evaluation_questions || []).forEach((q: any) => {
             const key = String(q.question_text || "").trim().toLowerCase();
             if (key && !questionByText.has(key)) questionByText.set(key, Number(q.id));
         });

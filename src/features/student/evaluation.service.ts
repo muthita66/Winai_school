@@ -148,7 +148,7 @@ export const EvaluationService = {
             forms[0];
 
         const questionByText = new Map<string, number>();
-        form.evaluation_questions.forEach((q) => {
+        ((form as any).evaluation_questions || []).forEach((q: any) => {
             const key = String(q.question_text || '').trim().toLowerCase();
             if (key && !questionByText.has(key)) questionByText.set(key, q.id);
         });

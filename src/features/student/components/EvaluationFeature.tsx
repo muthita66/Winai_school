@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { StudentApiService } from "@/services/student-api.service";
 import toast from "react-hot-toast";
 import { getAcademicSemesterDefault, getAcademicYearOptionsForStudent, getCurrentAcademicYearBE } from "@/features/student/academic-term";
+import { useMemo } from "react";
 
 interface EvaluationFeatureProps {
     session: any;
@@ -27,6 +28,7 @@ export function EvaluationFeature({ session }: EvaluationFeatureProps) {
     const [selectedSection, setSelectedSection] = useState<any | null>(null);
     const [topics, setTopics] = useState<string[]>([]);
     const [evaluatedSectionIds, setEvaluatedSectionIds] = useState<number[]>([]);
+    const [history, setHistory] = useState<any[]>([]); // Student enrollment history for dynamic terms
 
     const [isLoadingInit, setIsLoadingInit] = useState(true);
     const [isLoadingTopics, setIsLoadingTopics] = useState(false);
@@ -51,10 +53,60 @@ export function EvaluationFeature({ session }: EvaluationFeatureProps) {
     // Derived: have all registered subjects been evaluated?
     const allEvaluated = totalRegistered > 0 && evaluatedCount >= totalRegistered;
 
+    // Dynamic Options from History
+    const dynamicYearOptions = useMemo(() => {
+        const years = new Set<number>();
+        if (history.length > 0) {
+            history.forEach(h => {
+                if (h.year) years.add(Number(h.year));
+            });
+        }
+        if (years.size === 0) return yearOptions;
+        return Array.from(years).sort((a, b) => b - a);
+    }, [history, yearOptions]);
+
+    const dynamicSemesterOptions = useMemo(() => {
+        const semesters = new Set<number>();
+        if (history.length > 0) {
+            history.forEach(h => {
+                if (Number(h.year) === year && h.semester) {
+                    semesters.add(Number(h.semester));
+                }
+            });
+        }
+        if (semesters.size === 0) return [1, 2];
+        return Array.from(semesters).sort((a, b) => a - b);
+    }, [history, year]);
+
 
     const initData = async () => {
         setIsLoadingInit(true);
         try {
+            // First time: Fetch enrollment history to populate year/semester dropdowns
+            if (history.length === 0) {
+                const allGrades = await StudentApiService.getGrades();
+                if (Array.isArray(allGrades) && allGrades.length > 0) {
+                    setHistory(allGrades);
+
+                    // If current year/semester is not in history, fallback to latest from history
+                    const years = allGrades.map(g => Number(g.year));
+                    const latestYear = Math.max(...years);
+                    const semsForLatest = allGrades
+                        .filter(g => Number(g.year) === latestYear)
+                        .map(g => Number(g.semester));
+                    const latestSem = Math.max(...semsForLatest);
+
+                    // Only update if current year/semester is not present in history
+                    const exists = allGrades.some(g => Number(g.year) === year && Number(g.semester) === semester);
+                    if (!exists) {
+                        setYear(latestYear);
+                        setSemester(latestSem);
+                        // The effect will trigger initData again with updated year/semester
+                        return;
+                    }
+                }
+            }
+
             // Fetch registered subjects for dropdown
             const regs = await StudentApiService.getRegistered(year, semester);
 
@@ -402,6 +454,28 @@ export function EvaluationFeature({ session }: EvaluationFeatureProps) {
                 </svg>
             </section>
 
+            {/* Tab Navigation Row */}
+            <div className="flex gap-2">
+                <button
+                    onClick={() => { setMode('evaluate'); setSelectedAdvisor(null); }}
+                    className={`px-5 py-2 rounded-full text-sm font-bold transition-all duration-300 ${mode === 'evaluate'
+                        ? 'bg-teal-600 text-white shadow-md'
+                        : 'bg-white text-slate-500 hover:bg-slate-50 border border-slate-200'
+                        }`}
+                >
+                    การประเมินครูรายวิชา
+                </button>
+                <button
+                    onClick={() => setMode('evaluate_advisor')}
+                    className={`px-5 py-2 rounded-full text-sm font-bold transition-all duration-300 ${mode === 'evaluate_advisor'
+                        ? 'bg-teal-600 text-white shadow-md'
+                        : 'bg-white text-slate-500 hover:bg-slate-50 border border-slate-200'
+                        }`}
+                >
+                    ประเมินครูที่ปรึกษา
+                </button>
+            </div>
+
             {/* Global Selection Section (Year, Semester, Subject) */}
             <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                 <div className="flex items-center gap-3 mb-6">
@@ -425,7 +499,7 @@ export function EvaluationFeature({ session }: EvaluationFeatureProps) {
                             className="w-full border border-slate-300 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 bg-slate-100 appearance-none text-slate-700 shadow-sm"
                             style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: `right 0.5rem center`, backgroundRepeat: `no-repeat`, backgroundSize: `1.5em 1.5em` }}
                         >
-                            {yearOptions.map((y) => (
+                            {dynamicYearOptions.map((y) => (
                                 <option key={y} value={y}>{y}</option>
                             ))}
                         </select>
@@ -438,8 +512,9 @@ export function EvaluationFeature({ session }: EvaluationFeatureProps) {
                             className="w-full border border-slate-300 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 bg-slate-100 appearance-none text-slate-700 shadow-sm"
                             style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: `right 0.5rem center`, backgroundRepeat: `no-repeat`, backgroundSize: `1.5em 1.5em` }}
                         >
-                            <option value={1}>1</option>
-                            <option value={2}>2</option>
+                            {dynamicSemesterOptions.map(s => (
+                                <option key={s} value={s}>{s}</option>
+                            ))}
                         </select>
                     </div>
                     {mode === 'evaluate' && (
@@ -465,28 +540,6 @@ export function EvaluationFeature({ session }: EvaluationFeatureProps) {
                     )}
                 </div>
             </section>
-
-            {/* Tab Navigation Row */}
-            <div className="flex gap-2">
-                <button
-                    onClick={() => { setMode('evaluate'); setSelectedAdvisor(null); }}
-                    className={`px-5 py-2 rounded-full text-sm font-bold transition-all duration-300 ${mode === 'evaluate'
-                        ? 'bg-teal-600 text-white shadow-md'
-                        : 'bg-white text-slate-500 hover:bg-slate-50 border border-slate-200'
-                        }`}
-                >
-                    การประเมินครูรายวิชา
-                </button>
-                <button
-                    onClick={() => setMode('evaluate_advisor')}
-                    className={`px-5 py-2 rounded-full text-sm font-bold transition-all duration-300 ${mode === 'evaluate_advisor'
-                        ? 'bg-teal-600 text-white shadow-md'
-                        : 'bg-white text-slate-500 hover:bg-slate-50 border border-slate-200'
-                        }`}
-                >
-                    ประเมินครูที่ปรึกษา
-                </button>
-            </div>
 
             {mode === 'evaluate' ? (
                 <>

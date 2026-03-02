@@ -243,9 +243,9 @@ export const TeacherEvaluationService = {
                         { question_text: 'ศีลธรรมและระเบียบวินัย', question_type: 'rating' },
                     ]
                 }
-            },
+            } as any,
             include: { evaluation_questions: { orderBy: { id: 'asc' } } }
-        });
+        }) as any;
     },
 
     async getSubjectEvaluationTemplate(teacher_id: number, student_id: number, section_id: number, year: number, semester: number) {
@@ -291,7 +291,7 @@ export const TeacherEvaluationService = {
                 feedback = answers.find(a => a.score == null)?.answer_text || '';
             }
 
-            const topics = form.evaluation_questions.map(q => ({ id: q.id, name: q.question_text }));
+            const topics = ((form as any).evaluation_questions || []).map((q: any) => ({ id: q.id, name: q.question_text }));
 
             return {
                 form_id: form.id,
@@ -326,7 +326,7 @@ export const TeacherEvaluationService = {
         if (!student || !teacher) throw new Error('Student or teacher not found');
 
         const questionByText = new Map<string, number>();
-        form.evaluation_questions.forEach(q => questionByText.set(q.question_text.toLowerCase(), q.id));
+        ((form as any).evaluation_questions || []).forEach((q: any) => questionByText.set(q.question_text.toLowerCase(), q.id));
 
         return prisma.$transaction(async (tx) => {
             // Raw SQL insert because user_id (student user id) is missing from table

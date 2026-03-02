@@ -2,6 +2,31 @@
 import { useState, useEffect, useCallback } from "react";
 import { DirectorApiService } from "@/services/director-api.service";
 import Link from "next/link";
+import {
+    AdjustmentsHorizontalIcon,
+    ChartBarIcon,
+    UserGroupIcon,
+    UserIcon,
+    HeartIcon,
+    BookOpenIcon,
+    ClipboardDocumentCheckIcon,
+    CurrencyDollarIcon,
+    MapPinIcon,
+    BellIcon,
+    ExclamationTriangleIcon,
+    ExclamationCircleIcon,
+    InformationCircleIcon,
+    PresentationChartBarIcon,
+    CpuChipIcon,
+    AcademicCapIcon,
+    CalendarDaysIcon,
+    TrophyIcon,
+    TableCellsIcon,
+    ShieldCheckIcon,
+    LifebuoyIcon,
+    EyeIcon,
+    DocumentTextIcon
+} from "@/components/SimpleIcons";
 
 // === Pure CSS/SVG Chart Components ===
 function Gauge({ value, max = 100, label, color }: { value: number; max?: number; label: string; color: string }) {
@@ -106,16 +131,16 @@ export function DashboardFeature({ session }: { session: any }) {
     const advAtt = adv.attendanceFlow || [];
     const comparisons = d.comparisons || {};
     const tabs = [
-        { id: 'overview', label: '📊 ภาพรวม' },
-        { id: 'students', label: `👨‍🎓 นักเรียน ${atRisk.length ? `(⚠️${atRisk.length})` : ''}` },
-        { id: 'hr', label: `👩‍🏫 บุคลากร ${hr.nearRetirement ? `(⏰${hr.nearRetirement})` : ''}` },
-        { id: 'health', label: `🏥 สุขภาพ ${health.healthIssues?.length ? `(⚠️${health.healthIssues.length})` : ''}` },
-        { id: 'curriculum', label: '📚 หลักสูตร' },
-        { id: 'evaluation', label: '📝 ผลประเมิน' },
-        { id: 'finance', label: '💰 งบประมาณ' },
-        { id: 'projects', label: '📌 โครงการ' },
-        { id: 'comparisons', label: '📈 เปรียบเทียบ' },
-        { id: 'actions', label: `🔔 ดำเนินการ ${actItems.length ? `(${actItems.length})` : ''}` },
+        { id: 'overview', label: 'ภาพรวม', icon: ChartBarIcon },
+        { id: 'students', label: 'นักเรียน', icon: UserGroupIcon, badge: atRisk.length ? atRisk.length : null, badgeType: 'error' },
+        { id: 'hr', label: 'บุคลากร', icon: UserIcon, badge: hr.nearRetirement ? hr.nearRetirement : null, badgeType: 'warning' },
+        { id: 'health', label: 'สุขภาพ', icon: HeartIcon, badge: health.healthIssues?.length ? health.healthIssues.length : null, badgeType: 'warning' },
+        { id: 'curriculum', label: 'หลักสูตร', icon: BookOpenIcon },
+        { id: 'evaluation', label: 'ผลประเมิน', icon: ClipboardDocumentCheckIcon },
+        { id: 'finance', label: 'งบประมาณ', icon: CurrencyDollarIcon },
+        { id: 'projects', label: 'โครงการ', icon: MapPinIcon },
+        { id: 'comparisons', label: 'เปรียบเทียบ', icon: ChartBarIcon },
+        { id: 'actions', label: 'ดำเนินการ', icon: BellIcon, badge: actItems.length ? actItems.length : null },
     ];
 
     return (
@@ -146,7 +171,8 @@ export function DashboardFeature({ session }: { session: any }) {
             {/* ─── FILTER PANEL ─── */}
             <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
                 <div className="flex items-center gap-2 mb-3">
-                    <span className="text-sm font-bold text-slate-700">🎛 ตัวกรอง</span>
+                    <AdjustmentsHorizontalIcon className="w-5 h-5 text-slate-500" />
+                    <span className="text-sm font-bold text-slate-700">ตัวกรอง</span>
                     {hasFilters && <button onClick={clearFilters} className="text-xs text-red-500 hover:text-red-700 bg-red-50 px-2 py-1 rounded-lg font-medium">✕ ล้างทั้งหมด</button>}
                     {loading && <span className="text-xs text-indigo-500 animate-pulse ml-auto">กำลังโหลด...</span>}
                 </div>
@@ -186,20 +212,36 @@ export function DashboardFeature({ session }: { session: any }) {
             {/* ─── ALERTS ─── */}
             {alerts.length > 0 && (
                 <div className="space-y-2">
-                    {alerts.map((a: any, i: number) => (
-                        <div key={i} className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border text-sm font-medium ${a.type === 'danger' ? 'bg-red-50 border-red-200 text-red-700' : a.type === 'warning' ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-blue-50 border-blue-200 text-blue-700'}`}>
-                            <span>{a.type === 'danger' ? '🔴' : a.type === 'warning' ? '🟡' : '🔵'}</span>
-                            <span>{a.message}</span>
-                        </div>
-                    ))}
+                    {alerts.map((a: any, i: number) => {
+                        const Icon = a.type === 'danger' ? ExclamationTriangleIcon : a.type === 'warning' ? ExclamationCircleIcon : InformationCircleIcon;
+                        const colorClass = a.type === 'danger' ? 'bg-red-50 border-red-200 text-red-700' : a.type === 'warning' ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-blue-50 border-blue-200 text-blue-700';
+                        const iconColor = a.type === 'danger' ? 'text-red-500' : a.type === 'warning' ? 'text-amber-500' : 'text-blue-500';
+
+                        return (
+                            <div key={i} className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border text-sm font-medium ${colorClass}`}>
+                                <Icon className={`w-5 h-5 ${iconColor}`} />
+                                <span>{a.message}</span>
+                            </div>
+                        );
+                    })}
                 </div>
             )}
 
             {/* ─── TABS ─── */}
-            <div className="flex gap-1 bg-slate-100 p-1 rounded-2xl overflow-x-auto">
+            <div className="flex gap-1 bg-slate-100 p-1 rounded-2xl overflow-x-auto no-scrollbar">
                 {tabs.map(t => (
-                    <button key={t.id} onClick={() => setTab(t.id as any)} className={`flex-1 px-3 py-2 rounded-xl text-sm font-semibold transition-all whitespace-nowrap ${tab === t.id ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
-                        {t.label}
+                    <button
+                        key={t.id}
+                        onClick={() => setTab(t.id as any)}
+                        className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap min-w-[120px] ${tab === t.id ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                    >
+                        <t.icon className={`w-4 h-4 ${tab === t.id ? 'text-indigo-600' : 'text-slate-400'}`} />
+                        <span>{t.label}</span>
+                        {t.badge && (
+                            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${t.badgeType === 'error' ? 'bg-red-100 text-red-600' : t.badgeType === 'warning' ? 'bg-amber-100 text-amber-600' : 'bg-indigo-100 text-indigo-600'}`}>
+                                {t.badge}
+                            </span>
+                        )}
                     </button>
                 ))}
             </div>
@@ -210,7 +252,10 @@ export function DashboardFeature({ session }: { session: any }) {
                     {/* EXECUTIVE SUMMARY (AI-like Insights) */}
                     {exSummary.length > 0 && (
                         <div className="bg-gradient-to-r from-slate-900 to-indigo-900 rounded-2xl p-6 shadow-lg text-white">
-                            <h3 className="text-lg font-bold mb-4 flex items-center gap-2">🤖 Executive Smart Summary</h3>
+                            <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                                <CpuChipIcon className="w-6 h-6 text-indigo-400" />
+                                Executive Smart Summary
+                            </h3>
                             <div className="space-y-3">
                                 {exSummary.map((text: string, i: number) => (
                                     <div key={i} className="flex items-start gap-3 bg-white/10 rounded-xl p-3 border border-white/10 backdrop-blur-sm">
@@ -222,7 +267,10 @@ export function DashboardFeature({ session }: { session: any }) {
                     )}
 
                     <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-                        <h3 className="text-lg font-bold text-slate-800 mb-5">🎯 ตัวชี้วัดหลัก (KPI)</h3>
+                        <h3 className="text-lg font-bold text-slate-800 mb-5 flex items-center gap-2">
+                            <PresentationChartBarIcon className="w-5 h-5 text-indigo-500" />
+                            ตัวชี้วัดหลัก (KPI)
+                        </h3>
                         <div className="flex flex-wrap justify-around gap-6">
                             <Gauge value={att.rate || 0} label="อัตราเข้าเรียน" color={att.rate >= 95 ? '#10b981' : att.rate >= 80 ? '#f59e0b' : '#ef4444'} />
                             <Gauge value={f.budgetUsedPct || 0} label="งบประมาณใช้ไป" color={f.budgetUsedPct <= 60 ? '#10b981' : f.budgetUsedPct <= 80 ? '#f59e0b' : '#ef4444'} />
@@ -232,13 +280,15 @@ export function DashboardFeature({ session }: { session: any }) {
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         {[
-                            { label: "นักเรียน", value: s.totalStudents, icon: "👨‍🎓", g: "from-blue-500 to-indigo-600", href: "/director/students" },
-                            { label: "ครู", value: s.totalTeachers, icon: "👩‍🏫", g: "from-emerald-500 to-teal-600", href: "/director/teachers" },
-                            { label: "รายวิชา", value: s.totalSubjects, icon: "📚", g: "from-amber-500 to-orange-600", href: "/director/subjects" },
-                            { label: "กิจกรรม", value: s.totalActivities, icon: "📅", g: "from-purple-500 to-pink-600", href: "/director/activities" },
+                            { label: "นักเรียน", value: s.totalStudents, icon: UserGroupIcon, g: "from-blue-500 to-indigo-600", href: "/director/students" },
+                            { label: "ครู", value: s.totalTeachers, icon: UserIcon, g: "from-emerald-500 to-teal-600", href: "/director/teachers" },
+                            { label: "รายวิชา", value: s.totalSubjects, icon: BookOpenIcon, g: "from-amber-500 to-orange-600", href: "/director/subjects" },
+                            { label: "กิจกรรม", value: s.totalActivities, icon: CalendarDaysIcon, g: "from-purple-500 to-pink-600", href: "/director/activities" },
                         ].map((c, i) => (
                             <Link key={i} href={c.href} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 hover:shadow-md hover:-translate-y-0.5 transition-all">
-                                <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${c.g} flex items-center justify-center text-lg mb-2`}>{c.icon}</div>
+                                <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${c.g} flex items-center justify-center text-lg mb-2`}>
+                                    <c.icon className="w-5 h-5 text-white" />
+                                </div>
                                 <div className="text-xs text-slate-500">{c.label}</div>
                                 <div className="text-2xl font-bold text-slate-800">{(c.value || 0).toLocaleString()}</div>
                             </Link>
@@ -246,7 +296,10 @@ export function DashboardFeature({ session }: { session: any }) {
                     </div>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                         <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-                            <h3 className="font-bold text-slate-800 mb-3">👥 สัดส่วนเพศ</h3>
+                            <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                <UserGroupIcon className="w-4 h-4 text-slate-400" />
+                                สัดส่วนเพศ
+                            </h3>
                             <DonutChart data={[
                                 { label: 'ชาย', value: s.male || 0, color: '#3b82f6' },
                                 { label: 'หญิง', value: s.female || 0, color: '#ec4899' },
@@ -254,7 +307,10 @@ export function DashboardFeature({ session }: { session: any }) {
                             ].filter(x => x.value > 0)} />
                         </div>
                         <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-                            <h3 className="font-bold text-slate-800 mb-3">💰 การเงิน</h3>
+                            <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                <CurrencyDollarIcon className="w-4 h-4 text-slate-400" />
+                                การเงิน
+                            </h3>
                             <div className="space-y-2">
                                 <div className="flex justify-between p-2.5 rounded-xl bg-green-50 border border-green-200"><span className="text-sm text-green-700">รายรับ</span><span className="font-bold text-green-700">{(f.income || 0).toLocaleString()} ฿</span></div>
                                 <div className="flex justify-between p-2.5 rounded-xl bg-red-50 border border-red-200"><span className="text-sm text-red-700">รายจ่าย</span><span className="font-bold text-red-700">{(f.expense || 0).toLocaleString()} ฿</span></div>
@@ -266,12 +322,14 @@ export function DashboardFeature({ session }: { session: any }) {
                     {/* Education Quality KPIs */}
                     <div className="grid grid-cols-3 gap-3">
                         {[
-                            { l: "GPA เฉลี่ย", v: grades.gpaAvg || 0, ic: "🎓", g: "from-indigo-500 to-violet-600" },
-                            { l: "เกรด ≥3", v: `${grades.gradeAbove3Pct || 0}%`, ic: "📈", g: "from-emerald-500 to-teal-600" },
-                            { l: "เกรด F", v: `${grades.gradeFPct || 0}%`, ic: "📉", g: grades.gradeFPct > 10 ? "from-red-500 to-rose-600" : "from-slate-400 to-slate-500" },
+                            { l: "GPA เฉลี่ย", v: grades.gpaAvg || 0, ic: AcademicCapIcon, g: "from-indigo-500 to-violet-600" },
+                            { l: "เกรด ≥3", v: `${grades.gradeAbove3Pct || 0}%`, ic: ChartBarIcon, g: "from-emerald-500 to-teal-600" },
+                            { l: "เกรด F", v: `${grades.gradeFPct || 0}%`, ic: ExclamationCircleIcon, g: grades.gradeFPct > 10 ? "from-red-500 to-rose-600" : "from-slate-400 to-slate-500" },
                         ].map((c, i) => (
                             <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
-                                <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${c.g} flex items-center justify-center text-lg mb-2`}>{c.ic}</div>
+                                <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${c.g} flex items-center justify-center text-lg mb-2`}>
+                                    <c.ic className="w-5 h-5 text-white" />
+                                </div>
                                 <div className="text-[10px] text-slate-500">{c.l}</div><div className="text-xl font-bold text-slate-800">{c.v}</div>
                             </div>
                         ))}
@@ -280,14 +338,24 @@ export function DashboardFeature({ session }: { session: any }) {
                     {/* Upcoming Events */}
                     {events.length > 0 && (
                         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                            <div className="p-4 border-b border-slate-200"><h3 className="font-bold text-slate-800">📅 กิจกรรม/ปฏิทินล่าสุด</h3></div>
+                            <div className="p-4 border-b border-slate-200 flex items-center gap-2">
+                                <CalendarDaysIcon className="w-5 h-5 text-indigo-500" />
+                                <h3 className="font-bold text-slate-800">กิจกรรม/ปฏิทินล่าสุด</h3>
+                            </div>
                             <div className="divide-y divide-slate-50 max-h-[250px] overflow-y-auto">
                                 {events.map((e: any, i: number) => (
                                     <div key={i} className="px-4 py-2.5 flex items-center gap-3 hover:bg-slate-50">
-                                        <span className="text-lg">{e.source === 'activity' ? '🎪' : '📋'}</span>
+                                        <span className="text-lg">
+                                            {e.source === 'activity' ? <TrophyIcon className="w-5 h-5 text-amber-500" /> : <TableCellsIcon className="w-5 h-5 text-indigo-500" />}
+                                        </span>
                                         <div className="flex-1 min-w-0">
                                             <div className="text-xs font-medium text-slate-800 truncate">{e.title}</div>
-                                            {e.location && <div className="text-[10px] text-slate-500">📍 {e.location}</div>}
+                                            {e.location && (
+                                                <div className="text-[10px] text-slate-500 flex items-center gap-0.5">
+                                                    <MapPinIcon className="w-3 h-3" />
+                                                    {e.location}
+                                                </div>
+                                            )}
                                         </div>
                                         <span className="text-[10px] text-slate-400 shrink-0">{e.date ? new Date(e.date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' }) : '-'}</span>
                                     </div>
@@ -303,7 +371,10 @@ export function DashboardFeature({ session }: { session: any }) {
                 <div className="space-y-5">
                     {/* Attendance Stats */}
                     <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-                        <h3 className="font-bold text-slate-800 mb-4">📋 สถิติการเข้าเรียน</h3>
+                        <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <DocumentTextIcon className="w-5 h-5 text-indigo-500" />
+                            สถิติการเข้าเรียน
+                        </h3>
                         <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
                             {[
                                 { l: "ทั้งหมด", v: att.total, c: "bg-slate-100 text-slate-700 border-slate-200" },
@@ -318,18 +389,27 @@ export function DashboardFeature({ session }: { session: any }) {
                         <div className="mt-3 flex items-center gap-2">
                             <span className="text-sm text-slate-600">อัตราเข้าเรียน:</span>
                             <span className={`text-lg font-bold ${att.rate >= 95 ? 'text-green-600' : att.rate >= 80 ? 'text-amber-600' : 'text-red-600'}`}>{att.rate || 0}%</span>
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${att.rate >= 95 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{att.rate >= 95 ? '✅ ผ่าน' : '⚠️ ต่ำ'}</span>
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${att.rate >= 95 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                {att.rate >= 95 ? <ShieldCheckIcon className="w-3 h-3 inline mr-1" /> : <ExclamationTriangleIcon className="w-3 h-3 inline mr-1" />}
+                                {att.rate >= 95 ? 'ผ่าน' : 'ต่ำ'}
+                            </span>
                         </div>
                     </div>
 
                     {/* Charts row */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                         <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-                            <h3 className="font-bold text-slate-800 mb-3">📊 จำนวนแยกระดับชั้น</h3>
+                            <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                <ChartBarIcon className="w-5 h-5 text-indigo-500" />
+                                จำนวนแยกระดับชั้น
+                            </h3>
                             <BarChart data={(d.studentsByLevel || []).map((l: any) => ({ label: l.level || '-', value: l.count, color: '#6366f1' }))} height={150} />
                         </div>
                         <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-                            <h3 className="font-bold text-slate-800 mb-3">📈 การกระจายเกรด {filters.subject_id ? '(เฉพาะวิชาที่เลือก)' : ''}</h3>
+                            <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                <PresentationChartBarIcon className="w-5 h-5 text-indigo-500" />
+                                การกระจายเกรด {filters.subject_id ? '(เฉพาะวิชาที่เลือก)' : ''}
+                            </h3>
                             <BarChart data={(d.grades?.distribution || []).map((g: any) => ({ label: g.grade || '-', value: g.count, color: g.grade === 'A' || g.grade === '4' ? '#10b981' : g.grade === 'F' || g.grade === '0' ? '#ef4444' : '#6366f1' }))} height={150} />
                         </div>
                     </div>
@@ -337,7 +417,10 @@ export function DashboardFeature({ session }: { session: any }) {
                     {/* Attendance Flow Pattern */}
                     {advAtt.length > 0 && (
                         <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-                            <h3 className="font-bold text-slate-800 mb-3">🌊 รูปแบบการขาดเรียน (รายวัน)</h3>
+                            <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                <ChartBarIcon className="w-5 h-5 text-amber-500" />
+                                รูปแบบการขาดเรียน (รายวัน)
+                            </h3>
                             <BarChart data={advAtt.map((a: any) => {
                                 const thDayMap: Record<number, string> = { 1: 'จันทร์', 2: 'อังคาร', 3: 'พุธ', 4: 'พฤหัส', 5: 'ศุกร์', 6: 'เสาร์', 7: 'อาทิตย์' };
                                 return { label: thDayMap[a.day_of_week] || a.day_of_week, value: a.absent_count, color: '#f59e0b' };
@@ -349,7 +432,10 @@ export function DashboardFeature({ session }: { session: any }) {
                     <div className="bg-white rounded-2xl shadow-sm border border-red-200 overflow-hidden">
                         <div className="p-4 bg-gradient-to-r from-red-50 to-amber-50 border-b border-red-200 flex items-center justify-between">
                             <div>
-                                <h3 className="font-bold text-red-800 flex items-center gap-2">🚨 นักเรียนเฝ้าระวัง</h3>
+                                <h3 className="font-bold text-red-800 flex items-center gap-2">
+                                    <ExclamationTriangleIcon className="w-5 h-5 text-red-600 animate-pulse" />
+                                    นักเรียนเฝ้าระวัง
+                                </h3>
                                 <p className="text-xs text-red-600 mt-0.5">นักเรียนที่มีความเสี่ยงด้านวิชาการ / เข้าเรียน / พฤติกรรม</p>
                             </div>
                             <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-bold border border-red-200">{atRisk.length} คน</span>
@@ -389,16 +475,19 @@ export function DashboardFeature({ session }: { session: any }) {
                                             {/* Expanded Detail */}
                                             {isExpanded && (
                                                 <div className="px-4 pb-4 pl-14 space-y-1.5">
-                                                    {reasons.map((r: any, j: number) => (
-                                                        <div key={j} className={`flex items-start gap-2 text-sm p-2.5 rounded-lg border ${r.severity === 'high' ? 'bg-red-50 border-red-200 text-red-700' : r.severity === 'medium' ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-slate-50 border-slate-200 text-slate-700'}`}>
-                                                            <span className="shrink-0">{r.type === 'grade' ? '📉' : r.type === 'absent' ? '🚫' : '⚠️'}</span>
-                                                            <div>
-                                                                <span className="font-medium">{r.type === 'grade' ? 'ผลการเรียน' : r.type === 'absent' ? 'การเข้าเรียน' : 'พฤติกรรม'}: </span>
-                                                                <span>{r.detail}</span>
+                                                    {reasons.map((r: any, j: number) => {
+                                                        const Icon = r.type === 'grade' ? ChartBarIcon : r.type === 'absent' ? ExclamationCircleIcon : ExclamationTriangleIcon;
+                                                        return (
+                                                            <div key={j} className={`flex items-start gap-2 text-sm p-2.5 rounded-lg border ${r.severity === 'high' ? 'bg-red-50 border-red-200 text-red-700' : r.severity === 'medium' ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-slate-50 border-slate-200 text-slate-700'}`}>
+                                                                <Icon className="w-4 h-4 mt-0.5 shrink-0" />
+                                                                <div>
+                                                                    <span className="font-medium">{r.type === 'grade' ? 'ผลการเรียน' : r.type === 'absent' ? 'การเข้าเรียน' : 'พฤติกรรม'}: </span>
+                                                                    <span>{r.detail}</span>
+                                                                </div>
+                                                                <span className={`ml-auto shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold ${r.severity === 'high' ? 'bg-red-200 text-red-800' : 'bg-amber-200 text-amber-800'}`}>{r.severity === 'high' ? 'สูง' : 'ปานกลาง'}</span>
                                                             </div>
-                                                            <span className={`ml-auto shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold ${r.severity === 'high' ? 'bg-red-200 text-red-800' : 'bg-amber-200 text-amber-800'}`}>{r.severity === 'high' ? 'สูง' : 'ปานกลาง'}</span>
-                                                        </div>
-                                                    ))}
+                                                        );
+                                                    })}
                                                 </div>
                                             )}
                                         </div>
@@ -411,7 +500,10 @@ export function DashboardFeature({ session }: { session: any }) {
                     {/* Top rooms & room table */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                         <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-                            <h3 className="font-bold text-slate-800 mb-3">🏆 Top 5 ห้องคะแนนสูงสุด</h3>
+                            <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                <TrophyIcon className="w-5 h-5 text-amber-500" />
+                                Top 5 ห้องคะแนนสูงสุด
+                            </h3>
                             <div className="space-y-2">
                                 {(d.topRooms || []).length === 0 ? <p className="text-sm text-slate-500">ยังไม่มีข้อมูล</p> : (d.topRooms || []).map((r: any, i: number) => (
                                     <div key={i} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
@@ -422,7 +514,10 @@ export function DashboardFeature({ session }: { session: any }) {
                             </div>
                         </div>
                         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                            <div className="p-3 border-b border-slate-200"><h3 className="font-bold text-slate-800 text-sm">📋 จำนวนนักเรียนรายห้อง</h3></div>
+                            <div className="p-3 border-b border-slate-200 flex items-center gap-2">
+                                <TableCellsIcon className="w-4 h-4 text-indigo-500" />
+                                <h3 className="font-bold text-slate-800 text-sm">จำนวนนักเรียนรายห้อง</h3>
+                            </div>
                             <div className="overflow-y-auto max-h-[200px]">
                                 <table className="w-full"><thead className="sticky top-0"><tr className="bg-slate-50 border-b border-slate-200">
                                     <th className="px-3 py-2 text-left text-[10px] font-semibold text-slate-600">ชั้น</th>
@@ -443,14 +538,16 @@ export function DashboardFeature({ session }: { session: any }) {
                     {/* KPI Cards */}
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                         {[
-                            { l: "ครูทั้งหมด", v: s.totalTeachers, ic: "👩‍🏫", g: "from-indigo-500 to-violet-600" },
-                            { l: "ครู:นักเรียน", v: `1:${hr.ratio}`, ic: "⚖️", g: "from-emerald-500 to-teal-600" },
-                            { l: "Section/ครู", v: hr.avgSections, ic: "📚", g: "from-amber-500 to-orange-600" },
-                            { l: "ใกล้เกษียณ", v: hr.nearRetirement, ic: "⏰", g: "from-red-500 to-rose-600" },
-                            { l: "ผลประเมิน", v: `${hr.evalAvg || 0}/5`, ic: "⭐", g: "from-purple-500 to-pink-600" },
+                            { l: "ครูทั้งหมด", v: s.totalTeachers, ic: UserIcon, g: "from-indigo-500 to-violet-600" },
+                            { l: "ครู:นักเรียน", v: `1:${hr.ratio}`, ic: UserGroupIcon, g: "from-emerald-500 to-teal-600" },
+                            { l: "Section/ครู", v: hr.avgSections, ic: BookOpenIcon, g: "from-amber-500 to-orange-600" },
+                            { l: "ใกล้เกษียณ", v: hr.nearRetirement, ic: CalendarDaysIcon, g: "from-red-500 to-rose-600" },
+                            { l: "ผลประเมิน", v: `${hr.evalAvg || 0}/5`, ic: ClipboardDocumentCheckIcon, g: "from-purple-500 to-pink-600" },
                         ].map((c, i) => (
                             <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
-                                <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${c.g} flex items-center justify-center text-lg mb-2`}>{c.ic}</div>
+                                <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${c.g} flex items-center justify-center text-lg mb-2`}>
+                                    <c.ic className="w-5 h-5 text-white" />
+                                </div>
                                 <div className="text-[10px] text-slate-500">{c.l}</div><div className="text-xl font-bold text-slate-800">{c.v}</div>
                             </div>
                         ))}
@@ -460,7 +557,10 @@ export function DashboardFeature({ session }: { session: any }) {
                     {(hr.nearRetirementList || []).length > 0 && (
                         <div className="bg-white rounded-2xl shadow-sm border border-red-200 overflow-hidden">
                             <div className="p-4 bg-gradient-to-r from-red-50 to-amber-50 border-b border-red-200">
-                                <h3 className="font-bold text-red-800 flex items-center gap-2">⏰ รายชื่อครูใกล้เกษียณอายุราชการ</h3>
+                                <h3 className="font-bold text-red-800 flex items-center gap-2">
+                                    <CalendarDaysIcon className="w-5 h-5 text-red-600" />
+                                    รายชื่อครูใกล้เกษียณอายุราชการ
+                                </h3>
                                 <p className="text-xs text-red-600 mt-0.5">ครูที่มีอายุ 55 ปีขึ้นไป (เกษียณเมื่ออายุ 60 ปี)</p>
                             </div>
                             <div className="overflow-x-auto max-h-[350px] overflow-y-auto">
@@ -502,7 +602,10 @@ export function DashboardFeature({ session }: { session: any }) {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                         {/* Gender */}
                         <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-                            <h3 className="font-bold text-slate-800 mb-3">👥 สัดส่วนเพศบุคลากร</h3>
+                            <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                <UserGroupIcon className="w-4 h-4 text-slate-400" />
+                                สัดส่วนเพศบุคลากร
+                            </h3>
                             <DonutChart data={(hr.byGender || []).map((g: any) => ({
                                 label: g.gender, value: g.count,
                                 color: g.gender === 'ชาย' ? '#3b82f6' : g.gender === 'หญิง' ? '#ec4899' : '#cbd5e1'
@@ -510,7 +613,10 @@ export function DashboardFeature({ session }: { session: any }) {
                         </div>
                         {/* Department */}
                         <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-                            <h3 className="font-bold text-slate-800 mb-3">📊 แยกตามกลุ่มสาระ</h3>
+                            <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                <ChartBarIcon className="w-4 h-4 text-slate-400" />
+                                แยกตามกลุ่มสาระ
+                            </h3>
                             <BarChart data={(hr.teachersByDept || []).map((t: any) => ({ label: (t.dept || '').substring(0, 10), value: t.count, color: '#8b5cf6' }))} height={150} />
                         </div>
                     </div>
@@ -518,12 +624,18 @@ export function DashboardFeature({ session }: { session: any }) {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                         {/* Employment Type */}
                         <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-                            <h3 className="font-bold text-slate-800 mb-3">📋 ประเภทการจ้าง</h3>
+                            <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                <DocumentTextIcon className="w-4 h-4 text-slate-400" />
+                                ประเภทการจ้าง
+                            </h3>
                             <BarChart data={(hr.byEmpType || []).map((t: any, i: number) => ({ label: (t.type || '').substring(0, 12), value: t.count, color: `hsl(${200 + i * 40}, 60%, 50%)` }))} height={140} />
                         </div>
                         {/* Academic Rank */}
                         <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-                            <h3 className="font-bold text-slate-800 mb-3">🎓 วิทยฐานะ</h3>
+                            <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                <AcademicCapIcon className="w-4 h-4 text-slate-400" />
+                                วิทยฐานะ
+                            </h3>
                             <BarChart data={(hr.byAcademicRank || []).map((r: any, i: number) => ({ label: (r.rank || '').substring(0, 12), value: r.count, color: `hsl(${280 + i * 30}, 60%, 50%)` }))} height={140} />
                         </div>
                     </div>
@@ -531,7 +643,10 @@ export function DashboardFeature({ session }: { session: any }) {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                         {/* Age Distribution */}
                         <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-                            <h3 className="font-bold text-slate-800 mb-3">📈 กลุ่มอายุบุคลากร</h3>
+                            <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                <ChartBarIcon className="w-4 h-4 text-slate-400" />
+                                กลุ่มอายุบุคลากร
+                            </h3>
                             <BarChart data={(hr.ageGroups || []).map((g: any) => ({
                                 label: g.group, value: g.count,
                                 color: g.group === '56-60' ? '#ef4444' : g.group === '51-55' ? '#f59e0b' : '#6366f1'
@@ -539,16 +654,19 @@ export function DashboardFeature({ session }: { session: any }) {
                         </div>
                         {/* Eval Gauge */}
                         <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 flex flex-col items-center justify-center gap-4">
-                            <h3 className="font-bold text-slate-800">⭐ ผลประเมินการสอนเฉลี่ย</h3>
-                            <Gauge value={hr.evalAvg ? Math.round((hr.evalAvg / 5) * 100) : 0} label={`เฉลี่ย ${hr.evalAvg || 0} / 5`} color="#8b5cf6" />
+                            <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                                <ClipboardDocumentCheckIcon className="w-5 h-5 text-indigo-500" />
+                                ผลประเมินการสอนเฉลี่ย
+                            </h3>
                         </div>
                     </div>
 
                     {/* Teacher Workload Top 10 */}
                     {(hr.workloadTop10 || []).length > 0 && (
                         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                            <div className="p-4 border-b border-slate-200">
-                                <h3 className="font-bold text-slate-800">📚 Top 10 ภาระงานสอน (จำนวน Section)</h3>
+                            <div className="p-4 border-b border-slate-200 flex items-center gap-2">
+                                <BookOpenIcon className="w-5 h-5 text-indigo-500" />
+                                <h3 className="font-bold text-slate-800">Top 10 ภาระงานสอน (จำนวน Section)</h3>
                             </div>
                             <div className="overflow-x-auto">
                                 <table className="w-full">
@@ -586,14 +704,16 @@ export function DashboardFeature({ session }: { session: any }) {
                     {/* Health KPI Cards */}
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                         {[
-                            { l: "ตรวจสุขภาพแล้ว", v: `${health.totalChecked || 0}/${health.totalStudents || 0}`, ic: "🩺", g: "from-emerald-500 to-teal-600" },
-                            { l: "BMI ปกติ", v: health.bmi?.normal || 0, ic: "✅", g: "from-green-500 to-emerald-600" },
-                            { l: "มีอาการแพ้", v: health.allergyCount || 0, ic: "🤧", g: "from-amber-500 to-orange-600" },
-                            { l: "โรคประจำตัว", v: health.chronicCount || 0, ic: "💊", g: "from-red-500 to-rose-600" },
-                            { l: "ปัญหาสายตา", v: health.visionIssues || 0, ic: "👁️", g: "from-purple-500 to-violet-600" },
+                            { l: "ตรวจสุขภาพแล้ว", v: `${health.totalChecked || 0}/${health.totalStudents || 0}`, ic: PresentationChartBarIcon, g: "from-emerald-500 to-teal-600" },
+                            { l: "BMI ปกติ", v: health.bmi?.normal || 0, ic: ShieldCheckIcon, g: "from-green-500 to-emerald-600" },
+                            { l: "มีอาการแพ้", v: health.allergyCount || 0, ic: LifebuoyIcon, g: "from-amber-500 to-orange-600" },
+                            { l: "โรคประจำตัว", v: health.chronicCount || 0, ic: ClipboardDocumentCheckIcon, g: "from-red-500 to-rose-600" },
+                            { l: "ปัญหาสายตา", v: health.visionIssues || 0, ic: EyeIcon, g: "from-purple-500 to-violet-600" },
                         ].map((c, i) => (
                             <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
-                                <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${c.g} flex items-center justify-center text-lg mb-2`}>{c.ic}</div>
+                                <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${c.g} flex items-center justify-center text-lg mb-2`}>
+                                    <c.ic className="w-5 h-5 text-white" />
+                                </div>
                                 <div className="text-[10px] text-slate-500">{c.l}</div><div className="text-xl font-bold text-slate-800">{typeof c.v === 'number' ? c.v.toLocaleString() : c.v}</div>
                             </div>
                         ))}
@@ -602,7 +722,10 @@ export function DashboardFeature({ session }: { session: any }) {
                     {/* BMI & Blood Type */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                         <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-                            <h3 className="font-bold text-slate-800 mb-3">📊 ดัชนีมวลกาย (BMI)</h3>
+                            <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                <ChartBarIcon className="w-4 h-4 text-slate-400" />
+                                ดัชนีมวลกาย (BMI)
+                            </h3>
                             {health.bmi ? (
                                 <DonutChart data={[
                                     { label: `ผอม (${health.bmi.underweight})`, value: health.bmi.underweight || 0, color: '#60a5fa' },
@@ -614,7 +737,10 @@ export function DashboardFeature({ session }: { session: any }) {
                             ) : <p className="text-sm text-slate-500">ไม่มีข้อมูล</p>}
                         </div>
                         <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-                            <h3 className="font-bold text-slate-800 mb-3">🩸 หมู่เลือด</h3>
+                            <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                <LifebuoyIcon className="w-4 h-4 text-slate-400" />
+                                หมู่เลือด
+                            </h3>
                             {(health.bloodTypes || []).length > 0 ? (
                                 <BarChart data={(health.bloodTypes || []).map((b: any, i: number) => ({
                                     label: b.type || '-', value: b.count,
@@ -627,7 +753,10 @@ export function DashboardFeature({ session }: { session: any }) {
                     {/* BMI by Level */}
                     {(health.bmiByLevel || []).length > 0 && (
                         <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-                            <h3 className="font-bold text-slate-800 mb-3">📈 BMI แยกตามระดับชั้น</h3>
+                            <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                <ChartBarIcon className="w-4 h-4 text-slate-400" />
+                                BMI แยกตามระดับชั้น
+                            </h3>
                             <div className="overflow-x-auto">
                                 <table className="w-full">
                                     <thead><tr className="bg-slate-50 border-b border-slate-200">
@@ -665,7 +794,10 @@ export function DashboardFeature({ session }: { session: any }) {
                     {(health.healthIssues || []).length > 0 && (
                         <div className="bg-white rounded-2xl shadow-sm border border-amber-200 overflow-hidden">
                             <div className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-200">
-                                <h3 className="font-bold text-amber-800 flex items-center gap-2">⚠️ นักเรียนที่มีปัญหาสุขภาพ</h3>
+                                <h3 className="font-bold text-amber-800 flex items-center gap-2">
+                                    <ExclamationTriangleIcon className="w-5 h-5 text-amber-600" />
+                                    นักเรียนที่มีปัญหาสุขภาพ
+                                </h3>
                                 <p className="text-xs text-amber-600 mt-0.5">นักเรียนที่มีอาการแพ้ / โรคประจำตัว ที่ต้องเฝ้าระวัง</p>
                             </div>
                             <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
@@ -701,7 +833,10 @@ export function DashboardFeature({ session }: { session: any }) {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                         {/* Fitness Test Results */}
                         <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-                            <h3 className="font-bold text-slate-800 mb-3">🏃 ผลสมรรถภาพทางกาย</h3>
+                            <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                <PresentationChartBarIcon className="w-5 h-5 text-indigo-500" />
+                                ผลสมรรถภาพทางกาย
+                            </h3>
                             {(health.fitnessTests || []).length > 0 ? (
                                 <div className="space-y-2">
                                     {(health.fitnessTests || []).map((ft: any, i: number) => {
@@ -728,7 +863,10 @@ export function DashboardFeature({ session }: { session: any }) {
 
                         {/* Vaccination Coverage */}
                         <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-                            <h3 className="font-bold text-slate-800 mb-3">💉 ข้อมูลวัคซีน</h3>
+                            <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                <LifebuoyIcon className="w-5 h-5 text-indigo-500" />
+                                ข้อมูลวัคซีน
+                            </h3>
                             {(health.vaccinations || []).length > 0 ? (
                                 <div className="space-y-2">
                                     {(health.vaccinations || []).map((v: any, i: number) => {
@@ -757,9 +895,33 @@ export function DashboardFeature({ session }: { session: any }) {
             {tab === 'finance' && (
                 <div className="space-y-5">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-5 text-white shadow-md"><div className="text-green-100 text-sm mb-1">💰 รายรับ</div><div className="text-2xl font-bold">{(f.income || 0).toLocaleString()} ฿</div></div>
-                        <div className="bg-gradient-to-br from-red-500 to-rose-600 rounded-2xl p-5 text-white shadow-md"><div className="text-red-100 text-sm mb-1">💸 รายจ่าย</div><div className="text-2xl font-bold">{(f.expense || 0).toLocaleString()} ฿</div></div>
-                        <div className={`rounded-2xl p-5 text-white shadow-md ${f.balance >= 0 ? 'bg-gradient-to-br from-blue-500 to-indigo-600' : 'bg-gradient-to-br from-red-600 to-red-800'}`}><div className="text-sm mb-1 opacity-80">📊 คงเหลือ</div><div className="text-2xl font-bold">{(f.balance || 0).toLocaleString()} ฿</div></div>
+                        <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-5 text-white shadow-md">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <div className="text-green-100 text-sm mb-1">รายรับ</div>
+                                    <div className="text-2xl font-bold">{(f.income || 0).toLocaleString()} ฿</div>
+                                </div>
+                                <CurrencyDollarIcon className="w-8 h-8 text-white/30" />
+                            </div>
+                        </div>
+                        <div className="bg-gradient-to-br from-red-500 to-rose-600 rounded-2xl p-5 text-white shadow-md">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <div className="text-red-100 text-sm mb-1">รายจ่าย</div>
+                                    <div className="text-2xl font-bold">{(f.expense || 0).toLocaleString()} ฿</div>
+                                </div>
+                                <PresentationChartBarIcon className="w-8 h-8 text-white/30" />
+                            </div>
+                        </div>
+                        <div className={`rounded-2xl p-5 text-white shadow-md ${f.balance >= 0 ? 'bg-gradient-to-br from-blue-500 to-indigo-600' : 'bg-gradient-to-br from-red-600 to-red-800'}`}>
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <div className="text-sm mb-1 opacity-80">คงเหลือ</div>
+                                    <div className="text-2xl font-bold">{(f.balance || 0).toLocaleString()} ฿</div>
+                                </div>
+                                <ChartBarIcon className="w-8 h-8 text-white/30" />
+                            </div>
+                        </div>
                     </div>
                     <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
                         <div className="flex items-center gap-3 mb-3"><h3 className="font-bold text-slate-800">งบใช้ไป</h3><span className={`text-lg font-bold ${f.budgetUsedPct > 80 ? 'text-red-600' : f.budgetUsedPct > 60 ? 'text-amber-600' : 'text-emerald-600'}`}>{f.budgetUsedPct || 0}%</span></div>
@@ -768,7 +930,10 @@ export function DashboardFeature({ session }: { session: any }) {
                     {/* Monthly Chart */}
                     {(f.monthly || []).length > 0 && (
                         <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-                            <h3 className="font-bold text-slate-800 mb-3">📈 รายรับ-รายจ่ายรายเดือน</h3>
+                            <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                <ChartBarIcon className="w-5 h-5 text-indigo-500" />
+                                รายรับ-รายจ่ายรายเดือน
+                            </h3>
                             <div className="space-y-1.5 max-h-[300px] overflow-y-auto">{(f.monthly || []).map((m: any, i: number) => {
                                 const maxVal = Math.max(...(f.monthly || []).map((x: any) => Math.max(x.income || 0, x.expense || 0)), 1);
                                 return (<div key={i} className="p-2 rounded-lg bg-slate-50 border border-slate-100">
@@ -779,9 +944,16 @@ export function DashboardFeature({ session }: { session: any }) {
                             })}</div>
                         </div>
                     )}
-                    {(f.byCategory || []).length > 0 && <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200"><h3 className="font-bold text-slate-800 mb-3">📂 แยกตามหมวด</h3><div className="space-y-1.5">{(f.byCategory || []).map((c: any, i: number) => (
-                        <div key={i} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100"><div className="flex items-center gap-2"><span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${c.type === 'รายรับ' || c.type === 'income' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{c.type}</span><span className="text-sm font-medium text-slate-800">{c.category}</span></div><span className="text-sm font-bold text-slate-700">{Number(c.total || 0).toLocaleString()} ฿</span></div>
-                    ))}</div></div>}
+                    {(f.byCategory || []).length > 0 && (
+                        <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+                            <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                <TableCellsIcon className="w-5 h-5 text-indigo-500" />
+                                แยกตามหมวด
+                            </h3>
+                            <div className="space-y-1.5">
+                                {(f.byCategory || []).map((c: any, i: number) => (
+                                    <div key={i} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100"><div className="flex items-center gap-2"><span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${c.type === 'รายรับ' || c.type === 'income' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{c.type}</span><span className="text-sm font-medium text-slate-800">{c.category}</span></div><span className="text-sm font-bold text-slate-700">{Number(c.total || 0).toLocaleString()} ฿</span></div>
+                                ))}</div></div>)}
                 </div>
             )}
 
@@ -789,14 +961,36 @@ export function DashboardFeature({ session }: { session: any }) {
             {tab === 'projects' && (
                 <div className="space-y-5">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200"><div className="text-xs text-slate-500">📌 โครงการ</div><div className="text-2xl font-bold text-slate-800">{proj.total || 0}</div></div>
-                        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200"><div className="text-xs text-slate-500">💰 งบรวม</div><div className="text-xl font-bold text-indigo-700">{(proj.budgetTotal || 0).toLocaleString()} ฿</div></div>
-                        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200"><div className="text-xs text-slate-500">💸 เบิกจ่าย</div><div className="text-xl font-bold text-amber-700">{(proj.budgetUsed || 0).toLocaleString()} ฿</div>{proj.budgetTotal > 0 && <div className="mt-2 h-2 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-amber-500 rounded-full" style={{ width: `${Math.round((proj.budgetUsed / proj.budgetTotal) * 100)}%` }} /></div>}</div>
+                        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
+                            <div className="flex items-center gap-2 mb-1">
+                                <MapPinIcon className="w-4 h-4 text-slate-400" />
+                                <div className="text-xs text-slate-500">โครงการ</div>
+                            </div>
+                            <div className="text-2xl font-bold text-slate-800">{proj.total || 0}</div>
+                        </div>
+                        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
+                            <div className="flex items-center gap-2 mb-1">
+                                <CurrencyDollarIcon className="w-4 h-4 text-slate-400" />
+                                <div className="text-xs text-slate-500">งบรวม</div>
+                            </div>
+                            <div className="text-xl font-bold text-indigo-700">{(proj.budgetTotal || 0).toLocaleString()} ฿</div>
+                        </div>
+                        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
+                            <div className="flex items-center gap-2 mb-1">
+                                <PresentationChartBarIcon className="w-4 h-4 text-slate-400" />
+                                <div className="text-xs text-slate-500">เบิกจ่าย</div>
+                            </div>
+                            <div className="text-xl font-bold text-amber-700">{(proj.budgetUsed || 0).toLocaleString()} ฿</div>
+                            {proj.budgetTotal > 0 && <div className="mt-2 h-2 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-amber-500 rounded-full" style={{ width: `${Math.round((proj.budgetUsed / proj.budgetTotal) * 100)}%` }} /></div>}
+                        </div>
                     </div>
                     {/* By Department */}
                     {(proj.byDept || []).length > 0 && (
                         <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-                            <h3 className="font-bold text-slate-800 mb-3">📊 งบโครงการแยกตามแผนก</h3>
+                            <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                <ChartBarIcon className="w-5 h-5 text-indigo-500" />
+                                งบโครงการแยกตามแผนก
+                            </h3>
                             <BarChart data={(proj.byDept || []).map((d: any, i: number) => ({ label: (d.department || '').substring(0, 10), value: Number(d.total_budget || 0), color: `hsl(${210 + i * 40}, 60%, 50%)` }))} height={140} />
                         </div>
                     )}

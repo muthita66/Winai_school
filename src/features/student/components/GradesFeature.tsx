@@ -97,6 +97,33 @@ export function GradesFeature({ session }: GradesFeatureProps) {
     const latestAdviceData = advisorLatestQuery.data as any;
     const latestAdvisors = latestAdviceData?.advisors || (latestAdviceData?.advisor ? [latestAdviceData.advisor] : []);
 
+    // Dynamic Options from DB
+    const dynamicYearOptions = useMemo(() => {
+        const years = new Set<string>();
+        if (Array.isArray(allGrades)) {
+            allGrades.forEach(g => {
+                if (g.year) years.add(String(g.year));
+            });
+        }
+        // Fallback to yearOptions if no data yet
+        if (years.size === 0) return yearOptions.map(String);
+        return Array.from(years).sort((a, b) => Number(b) - Number(a));
+    }, [allGrades, yearOptions]);
+
+    const dynamicSemesterOptions = useMemo(() => {
+        const semesters = new Set<number>();
+        if (Array.isArray(allGrades)) {
+            allGrades.forEach(g => {
+                if (String(g.year) === year && g.semester) {
+                    semesters.add(Number(g.semester));
+                }
+            });
+        }
+        // Fallback to default if no data yet
+        if (semesters.size === 0) return [1, 2];
+        return Array.from(semesters).sort((a, b) => a - b);
+    }, [allGrades, year]);
+
     // Derived State (Calculations)
     const { termCredit, gpa } = useMemo(() => {
         let termCredits = 0;
@@ -138,10 +165,32 @@ export function GradesFeature({ session }: GradesFeatureProps) {
 
     // Automatic Fallback Effect
     useEffect(() => {
-        if (didAutoFallback || hasManualTermSelection || !hasValidTerm) return;
-        if (termGradesQuery.isLoading || advisorLatestQuery.isLoading) return;
+        if (didAutoFallback || hasManualTermSelection) return;
+        if (allGradesQuery.isLoading) return;
 
-        // If current term has no data, try to find the latest term from advisor/registration
+        // Primary source: actual enrollment history
+        if (Array.isArray(allGrades) && allGrades.length > 0) {
+            const years = allGrades.map(g => Number(g.year)).filter(Boolean);
+            if (years.length > 0) {
+                const latestYear = Math.max(...years);
+                const semsForLatest = allGrades
+                    .filter(g => Number(g.year) === latestYear)
+                    .map(g => Number(g.semester))
+                    .filter(Boolean);
+                const latestSem = semsForLatest.length > 0 ? Math.max(...semsForLatest) : 1;
+
+                const exists = allGrades.some(g => Number(g.year) === yearNum && Number(g.semester) === semesterNum);
+                if (!exists) {
+                    setDidAutoFallback(true);
+                    setYear(String(latestYear));
+                    setSemester(String(latestSem));
+                    return;
+                }
+            }
+        }
+
+        // Secondary source: advisor data
+        if (advisorLatestQuery.isLoading) return;
         if (grades.length === 0) {
             const latest = latestAdvisors[0];
             if (!latest?.year || !latest?.semester) return;
@@ -158,13 +207,15 @@ export function GradesFeature({ session }: GradesFeatureProps) {
     }, [
         didAutoFallback,
         hasManualTermSelection,
-        hasValidTerm,
-        termGradesQuery.isLoading,
+        allGradesQuery.isLoading,
         advisorLatestQuery.isLoading,
+        allGrades,
         grades.length,
         latestAdvisors,
         year,
-        semester
+        semester,
+        yearNum,
+        semesterNum
     ]);
 
     const formatThaiDate = (dateStr: string) => {
@@ -205,32 +256,43 @@ export function GradesFeature({ session }: GradesFeatureProps) {
                         <div className="text-teal-200 text-sm mb-1 print:text-gray-500">เลขประจำตัว</div>
                         <div className="text-lg font-bold print:text-black">{student.code || "-"}</div>
                     </div>
-                    <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 print:hidden">
+                    <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 relative print:hidden hover:bg-white/20 transition-colors group">
                         <label className="text-teal-200 text-sm mb-1 block">ปีการศึกษา</label>
-                        <select
-                            className="bg-transparent text-white border-b border-teal-300 w-full pb-1 outline-none font-bold text-lg cursor-pointer"
-                            value={year} onChange={e => {
-                                setHasManualTermSelection(true);
-                                setYear(e.target.value);
-                            }}
-                        >
-                            {yearOptions.map((y) => (
-                                <option key={y} value={String(y)} className="text-black">{y}</option>
-                            ))}
-                        </select>
+                        <div className="relative">
+                            <select
+                                className="bg-transparent text-white w-full outline-none font-bold text-lg cursor-pointer appearance-none relative z-10 pr-8"
+                                value={year} onChange={e => {
+                                    setHasManualTermSelection(true);
+                                    setYear(e.target.value);
+                                }}
+                            >
+                                {dynamicYearOptions.map((y) => (
+                                    <option key={y} value={y} className="text-black">{y}</option>
+                                ))}
+                            </select>
+                            <svg className="w-5 h-5 text-teal-300 absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </div>
                     </div>
-                    <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 print:hidden">
+                    <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 relative print:hidden hover:bg-white/20 transition-colors group">
                         <label className="text-teal-200 text-sm mb-1 block">ภาคเรียน</label>
-                        <select
-                            className="bg-transparent text-white border-b border-teal-300 w-full pb-1 outline-none font-bold text-lg cursor-pointer"
-                            value={semester} onChange={e => {
-                                setHasManualTermSelection(true);
-                                setSemester(e.target.value);
-                            }}
-                        >
-                            <option value="1" className="text-black">1</option>
-                            <option value="2" className="text-black">2</option>
-                        </select>
+                        <div className="relative">
+                            <select
+                                className="bg-transparent text-white w-full outline-none font-bold text-lg cursor-pointer appearance-none relative z-10 pr-8"
+                                value={semester} onChange={e => {
+                                    setHasManualTermSelection(true);
+                                    setSemester(e.target.value);
+                                }}
+                            >
+                                {dynamicSemesterOptions.map((s) => (
+                                    <option key={s} value={String(s)} className="text-black">{s}</option>
+                                ))}
+                            </select>
+                            <svg className="w-5 h-5 text-teal-300 absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </div>
                     </div>
 
                     {/* Print-only visible details */}
